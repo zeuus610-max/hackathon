@@ -225,7 +225,7 @@ def test_finance_provider_error_is_not_reported_as_applied(client, monkeypatch):
     assert result["detail"] == "Finance system rejected the update. No success is reported."
 
 
-def test_qbo_adapter_refreshes_oauth_and_sparse_updates_sandbox_vendor(client, monkeypatch):
+def test_qbo_adapter_refreshes_oauth_and_verifies_full_vendor_update(client, monkeypatch):
     _enable_gate(monkeypatch, [
         _gate_credential("maker-secret", "finance-maker-1", "finance_maker",
                          employee_username="n.ansari", scopes=["vendor:bank-change"],
@@ -258,7 +258,16 @@ def test_qbo_adapter_refreshes_oauth_and_sparse_updates_sandbox_vendor(client, m
                             {"intuit_tid": "qbo-tid-41"})
         async def get(self, url, **kwargs):
             calls.append(("GET", url, kwargs))
-            return Response(200, {"Vendor": {"Id": "41", "SyncToken": "7"}})
+            if len([call for call in calls if call[0] == "GET"]) == 1:
+                return Response(200, {"Vendor": {"Id": "41", "SyncToken": "7"}})
+            return Response(200, {"Vendor": {
+                "Id": "41", "SyncToken": "9",
+                "VendorPaymentBankDetail": {
+                    "BankAccountName": "Coastal Packaging Ltd",
+                    "BankBranchIdentifier": "ABCD1234567",
+                    "BankAccountNumber": "123456789083",
+                },
+            }})
 
     monkeypatch.setattr(gate.httpx, "AsyncClient", QBOClient)
     body = _bank_change() | {"vendor_id": "41"}
@@ -273,9 +282,9 @@ def test_qbo_adapter_refreshes_oauth_and_sparse_updates_sandbox_vendor(client, m
     assert result["upstream_reference"] == "qbo-tid-41"
     assert calls[1][0:2] == ("GET", "https://sandbox-quickbooks.api.intuit.com/v3/company/sandbox-realm/vendor/41")
     assert calls[2][0:2] == ("POST", "https://sandbox-quickbooks.api.intuit.com/v3/company/sandbox-realm/vendor")
-    assert calls[2][2]["params"] == {"operation": "update"}
+    assert calls[2][2]["params"] == {"operation": "update", "minorversion": "75"}
     assert calls[2][2]["json"] == {
-        "Id": "41", "SyncToken": "7", "sparse": True,
+        "Id": "41", "SyncToken": "7",
         "VendorPaymentBankDetail": {
             "BankAccountName": "Coastal Packaging Ltd",
             "BankBranchIdentifier": "ABCD1234567",
