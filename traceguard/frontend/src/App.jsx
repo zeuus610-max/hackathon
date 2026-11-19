@@ -49,10 +49,12 @@ export default function App() {
   const refresh = async () => {
     setError("");
     try {
-      const [h, t, e, hist, val, refs, checks, presetData] = await Promise.all([
-        api("/health"), api("/topology"), api(`/timeline?normalized=${normalized}&tolerance_s=${tolerance}&limit=1000`), api("/engine/history"), api("/validation"), api("/evidence-references"), api("/checklist"), api("/engine/presets")
+      const h = await api("/health");
+      setHealth(h);
+      const [t, e, hist, val, refs, checks, presetData] = await Promise.all([
+        api("/topology"), api(`/timeline?normalized=${normalized}&tolerance_s=${tolerance}&limit=1000`), api("/engine/history"), api("/validation"), api("/evidence-references"), api("/checklist"), api("/engine/presets")
       ]);
-      setHealth(h); setTopology(t); setTimeline(e.events || []); setDriftAssessment(e.drift_assessment); setHistory(hist.evaluations || []); setValidation(val); setPresets(presetData.presets || {});
+      setTopology(t); setTimeline(e.events || []); setDriftAssessment(e.drift_assessment); setHistory(hist.evaluations || []); setValidation(val); setPresets(presetData.presets || {});
       setReferences(Object.fromEntries(REFS.map(id => [id, refs.references.find(row => row.evidence_id === id)?.row_reference || ""])));
       setChecklist(Object.fromEntries(checks.items.map(row => [row.item_id, Boolean(row.checked)])));
     } catch (err) { setError(`API unavailable: ${err.message}`); }
@@ -65,6 +67,7 @@ export default function App() {
     return Object.values(groups).slice(-12);
   }, [timeline]);
   const factors = result ? Object.entries(result.factors).map(([factor, score]) => ({ factor, score })) : [];
+  const gateStatus = health?.request_gate || {};
   const setField = (key, value) => setForm(previous => ({ ...previous, [key]: value }));
   const applyPreset = key => { const preset = presets[key]; if (preset) { setForm({ ...preset, timestamp: "", action_sequence: (preset.action_sequence || []).join(", ") }); setResult(null); } };
   const execute = async event => {
@@ -80,9 +83,9 @@ export default function App() {
 
   return <div className="app">
     <header className="topbar">
-      <div className="nav-brand-group"><a className="brand" href="/" aria-label="Orbit overview"><img src="/assets/orbit-mascot.svg" alt=""/><span>orbit<span className="brand-dot">.</span></span></a><div className="case-label"><b>CR-26-047</b><span>HARBOR &amp; FINCH FREIGHT</span></div></div>
+      <div className="nav-brand-group"><a className="brand" href="/" aria-label="Orbit overview"><img src="/assets/solace-flower.png" alt=""/><span>orbit<span className="brand-dot">.</span></span></a><div className="case-label"><b>CR-26-047</b><span>HARBOR &amp; FINCH FREIGHT</span></div></div>
       <nav className="section-nav" aria-label="Defense console sections">{NAV.map((item, index) => <button key={item} className={section === index ? "active" : ""} onClick={() => setSection(index)}><small>0{index + 1}</small>{item}</button>)}</nav>
-      <div className="system-status"><StatePill tone={health?.status === "ok" ? "green" : "amber"}>API {health?.status === "ok" ? "ONLINE" : "CHECK"}</StatePill><StatePill tone={health?.database_connected ? "green" : "amber"}>{health?.database_provider || "DATABASE"}</StatePill><span className="utc-clock"><Clock3 size={14}/>{now.toISOString().replace("T", " ").slice(0, 19)} UTC</span></div>
+      <div className="system-status"><StatePill tone={health?.status === "ok" ? "green" : "amber"}>API {health?.status === "ok" ? "ONLINE" : "CHECK"}</StatePill><StatePill tone={gateStatus.can_forward ? "green" : "amber"}>BANK GATE {gateStatus.can_forward ? "CONNECTED" : gateStatus.write_mode === "manual_qbo_ui" ? "QBO MANUAL SAVE" : gateStatus.configured ? "HOLD ONLY" : "OFF"}</StatePill><StatePill tone={health?.database_connected ? "green" : "amber"}>{health?.database_provider || "DATABASE"}</StatePill><span className="utc-clock"><Clock3 size={14}/>{now.toISOString().replace("T", " ").slice(0, 19)} UTC</span></div>
     </header>
     <div className="subhead"><div><span className="live-dot"/> DEFENSE CONSOLE <span className="subdivider">/</span> EVIDENCE-LED OPERATIONS</div><span>LAST SYNC {health?.last_sync_utc || "—"}</span></div>
     {error && <div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={refresh}>Retry</button></div>}
@@ -101,7 +104,8 @@ export default function App() {
 function TopologyView({ topology, eventCount, selected, onSelect }) {
   const credentials = topology?.credentials || [];
   return <div className="page-grid">
-    <div className="page-intro"><div><small>01 / REQUEST PATHS &amp; CREDENTIAL EXPOSURE</small><h1>Trust the request.<br/><em>Never the network.</em></h1></div><StatePill tone="amber">{topology?.blind_spots?.length || 0} ACTIVE BLIND SPOTS</StatePill></div>
+    <div className="page-intro"><div><small>ORBIT · CR-26-047 VENDOR CHANGE DEFENSE</small><h1>Stop risky vendor bank changes<br/><em>before payment.</em></h1><p className="purpose-copy">Orbit checks identity, vendor scope, and separate Finance approval before a bank change can move forward.</p></div><div className="intro-art" aria-hidden="true"><img src="/assets/solace-flower.png" alt=""/></div><StatePill tone="amber">{topology?.blind_spots?.length || 0} EVIDENCE GAPS</StatePill></div>
+    <div className="gate-journey"><div className="gate-journey-title"><small>QBO SANDBOX BANK-CHANGE PATH</small><span>Vendor API did not save Bill Pay ACH in our sandbox check.</span></div><div className="gate-steps">{["Request held", "Finance approves", "Save ACH in QBO", "Confirm in Orbit"].map((step, index) => <div key={step}><b>0{index + 1}</b><span>{step}</span></div>)}</div></div>
     <div className="two-col topology-grid">
       <Card title="Cross-system topology" eyebrow="LIVE MODEL · CASE EVIDENCE">
         <div className="topology-canvas"><svg viewBox="0 0 820 410" role="img" aria-label="Finance and integration topology">
