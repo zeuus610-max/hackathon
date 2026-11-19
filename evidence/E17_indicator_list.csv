@@ -1,0 +1,6 @@
+indicator,type,first_seen,last_seen,confidence,vendor_note
+198.18.7.41,ip,2026-08-11,2026-08-12,high,Source of unauthorised requests
+198.18.7.58,ip,2026-08-12,2026-08-12,high,Source of unauthorised requests
+198.18.8.6,ip,2026-08-11,2026-08-12,medium,Seen near unauthorised requests
+python-requests/2.31.0,user_agent,2026-08-12,2026-08-12,high,Scripted client used by the unauthorised party
+key-tb-03,credential,n/a,n/a,low,Legacy credential. Retired by vendor

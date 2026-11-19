@@ -1,0 +1,103 @@
+{
+  "export_source": "Team chat workspace (partial export)",
+  "note": "Export covers selected channels only. Direct messages and edited or deleted messages are not included.",
+  "timezone": "local",
+  "messages": [
+    {
+      "ts_local": "2026-06-25 11:12",
+      "channel": "support-team",
+      "author": "s.iyer",
+      "text": "Customer from the Pune depot says the portal can't pull their PODs. Asking them to paste their config so I can check."
+    },
+    {
+      "ts_local": "2026-06-25 11:31",
+      "channel": "support-team",
+      "author": "s.iyer",
+      "text": "They pasted it into TKT-48213. Their storage access key is in there, bvk-7f3a. Same key we set up for their portal last year."
+    },
+    {
+      "ts_local": "2026-06-25 11:34",
+      "channel": "support-team",
+      "author": "a.nair",
+      "text": "Should we be pasting keys in tickets? Audit mentioned this I think."
+    },
+    {
+      "ts_local": "2026-06-25 11:36",
+      "channel": "support-team",
+      "author": "s.iyer",
+      "text": "It is how we have always done it, the secure link tool isn't ready. I will tidy the ticket later."
+    },
+    {
+      "ts_local": "2026-07-03 13:50",
+      "channel": "it-helpdesk",
+      "author": "p.menon",
+      "text": "Reporting dashboard is throwing a login failure loop, someone's script is stuck. Will fix tonight."
+    },
+    {
+      "ts_local": "2026-07-10 08:05",
+      "channel": "it-helpdesk",
+      "author": "a.kapoor",
+      "text": "TallyBridge pushed a sync update, they say the nightly run now starts earlier. New version number is 3.5.0."
+    },
+    {
+      "ts_local": "2026-07-14 15:20",
+      "channel": "it-helpdesk",
+      "author": "c.lawson",
+      "text": "Working remotely from Bengaluru this week and next, VPN is fine."
+    },
+    {
+      "ts_local": "2026-07-22 11:40",
+      "channel": "finance",
+      "author": "f.dsouza",
+      "text": "Running the vendor audit export this morning. If you see me export and delete a big file it is the audit, don't panic."
+    },
+    {
+      "ts_local": "2026-07-28 15:05",
+      "channel": "support-team",
+      "author": "s.iyer",
+      "text": "Deleted my weekly export by mistake clicking around, ignore."
+    },
+    {
+      "ts_local": "2026-08-12 09:15",
+      "channel": "support-team",
+      "author": "a.nair",
+      "text": "Saw a lot of export jobs in HelpDeskr from last night. One is stuck on delete."
+    },
+    {
+      "ts_local": "2026-08-12 09:22",
+      "channel": "support-team",
+      "author": "s.iyer",
+      "text": "That is probably the TallyBridge sync. They do weird things since the update. Leave it."
+    },
+    {
+      "ts_local": "2026-08-13 14:30",
+      "channel": "it-helpdesk",
+      "author": "p.menon",
+      "text": "Rohan Menon's old kiosk login at the warehouse office still works. I know he left in June. Will raise a ticket."
+    },
+    {
+      "ts_local": "2026-08-16 10:05",
+      "channel": "it-helpdesk",
+      "author": "a.kapoor",
+      "text": "Odd: three failed sign-ins on my admin account yesterday evening, from an IP I don't recognise. MFA stopped it, I assume it is a bot."
+    },
+    {
+      "ts_local": "2026-08-21 20:10",
+      "channel": "it-helpdesk",
+      "author": "p.menon",
+      "text": "Anyone get anything from TallyBridge? They emailed accounts@ about a precaution. Not sure why it didn't come to us."
+    },
+    {
+      "ts_local": "2026-08-24 16:55",
+      "channel": "finance",
+      "author": "m.sundar",
+      "text": "Why is HelpDeskr charging us for exports? Can someone look."
+    },
+    {
+      "ts_local": "2026-08-25 09:10",
+      "channel": "it-helpdesk",
+      "author": "a.kapoor",
+      "text": "Will check after the month-end close. Busy with the SOC2 questionnaire for a customer."
+    }
+  ]
+}
