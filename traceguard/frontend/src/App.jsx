@@ -22,7 +22,7 @@ async function api(path, options = {}) {
 }
 function Card({ title, eyebrow, children, className = "" }) { return <section className={`panel ${className}`}><div className="panel-head"><div><small>{eyebrow}</small><h2>{title}</h2></div></div>{children}</section>; }
 function Metric({ label, value, icon: Icon, tone = "cyan" }) { return <div className="metric"><span className={`metric-icon ${tone}`}><Icon size={16}/></span><div><small>{label}</small><strong>{value ?? "—"}</strong></div></div>; }
-function StatePill({ children, tone = "cyan" }) { return <span className={`pill ${tone}`}><i/>{children}</span>; }
+function StatePill({ children, tone = "cyan", title }) { return <span className={`pill ${tone}`} title={title}><i/>{children}</span>; }
 
 export default function App() {
   const [section, setSection] = useState(0);
@@ -85,7 +85,7 @@ export default function App() {
     <header className="topbar">
       <div className="nav-brand-group"><a className="brand" href="/" aria-label="Orbit overview"><img src="/assets/solace-flower.png" alt=""/><span>orbit<span className="brand-dot">.</span></span></a><div className="case-label"><b>CR-26-047</b><span>HARBOR &amp; FINCH FREIGHT</span></div></div>
       <nav className="section-nav" aria-label="Defense console sections">{NAV.map((item, index) => <button key={item} className={section === index ? "active" : ""} onClick={() => setSection(index)}><small>0{index + 1}</small>{item}</button>)}</nav>
-      <div className="system-status"><StatePill tone={health?.status === "ok" ? "green" : "amber"}>API {health?.status === "ok" ? "ONLINE" : "CHECK"}</StatePill><StatePill tone={gateStatus.can_forward ? "green" : "amber"}>BANK GATE {gateStatus.can_forward ? "CONNECTED" : gateStatus.write_mode === "manual_qbo_ui" ? "QBO MANUAL SAVE" : gateStatus.configured ? "HOLD ONLY" : "OFF"}</StatePill><StatePill tone={health?.database_connected ? "green" : "amber"}>{health?.database_provider || "DATABASE"}</StatePill><span className="utc-clock"><Clock3 size={14}/>{now.toISOString().replace("T", " ").slice(0, 19)} UTC</span></div>
+      <div className="system-status"><StatePill tone={health?.status === "ok" ? "green" : "amber"}>API {health?.status === "ok" ? "ONLINE" : "CHECK"}</StatePill><StatePill tone={gateStatus.can_forward ? "green" : "amber"} title="QBO’s Vendor API did not save the Bill Pay bank fields in this sandbox. Finance must save them in the QBO vendor screen.">{gateStatus.can_forward ? "Bank updates connected" : gateStatus.write_mode === "manual_qbo_ui" ? "Save bank details in QBO" : gateStatus.configured ? "Holds requests only" : "Bank gate off"}</StatePill><StatePill tone={health?.database_connected ? "green" : "amber"}>{health?.database_provider || "DATABASE"}</StatePill><span className="utc-clock"><Clock3 size={14}/>{now.toISOString().replace("T", " ").slice(0, 19)} UTC</span></div>
     </header>
     <div className="subhead"><div><span className="live-dot"/> DEFENSE CONSOLE <span className="subdivider">/</span> EVIDENCE-LED OPERATIONS</div><span>LAST SYNC {health?.last_sync_utc || "—"}</span></div>
     {error && <div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={refresh}>Retry</button></div>}
