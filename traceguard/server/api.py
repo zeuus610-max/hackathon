@@ -4,13 +4,15 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
 
 from . import clocks, detections, ingest
 from .config import CASE_ID, COMPANY, EVIDENCE_DIR, TRACK
 from .engine import PRESETS, evaluate as evaluate_request
+from . import gate
 from .schemas import (ChecklistUpdate, EvaluationRequest, EvidenceHashRequest,
-                      EvidenceReferencesUpdate, ValidationUpdate)
+                      EvidenceReferencesUpdate, ValidationUpdate,
+                      VendorBankChangeApproval, VendorBankChangeRequest)
 from .store import utcnow
 
 router = APIRouter(prefix="/api")
@@ -261,6 +263,7 @@ def api_health(request: Request):
         connected = False
     return {"status": "ok" if connected else "degraded", "database_provider": request.app.state.persistence.provider,
             "database_connected": connected, "current_utc": utcnow(),
+            "request_gate": gate.gate_status(),
             "last_sync_utc": getattr(request.app.state, "boot", {}).get("last_sync_utc"),
             "version": request.app.version}
 
@@ -409,3 +412,30 @@ def update_checklist(payload: ChecklistUpdate, request: Request):
     store = store_of(request)
     request.app.state.persistence.save_checklist(payload.item_id, payload.checked)
     return {"item_id": payload.item_id, "checked": payload.checked}
+
+
+@router.get("/gate/status")
+def request_gate_status():
+    return gate.gate_status()
+
+
+@router.post("/gate/vendor-changes", status_code=status.HTTP_202_ACCEPTED)
+async def submit_vendor_bank_change(payload: VendorBankChangeRequest, request: Request):
+    return await gate.submit_change(payload, request)
+
+
+@router.get("/gate/requests")
+def gate_requests(request: Request, limit: int = Query(100, ge=1, le=500)):
+    return gate.list_requests(request, limit)
+
+
+@router.get("/gate/requests/{gate_request_id}")
+def gate_request_details(gate_request_id: str, request: Request):
+    return gate.get_request(gate_request_id, request)
+
+
+@router.post("/gate/requests/{gate_request_id}/approvals")
+async def approve_vendor_bank_change(gate_request_id: str,
+                                     payload: VendorBankChangeApproval,
+                                     request: Request):
+    return await gate.approve_change(gate_request_id, payload, request)

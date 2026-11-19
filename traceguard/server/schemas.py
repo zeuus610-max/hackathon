@@ -91,3 +91,29 @@ class EvidenceHashRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     evidence_id: str = Field(min_length=1, max_length=20, pattern=r"^E\d{2}$")
+
+
+class BankDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    bank_name: str = Field(min_length=2, max_length=120)
+    account_holder: str = Field(min_length=2, max_length=120)
+    account_number: str = Field(min_length=4, max_length=34, pattern=r"^[A-Za-z0-9 -]+$")
+    routing_code: str = Field(min_length=4, max_length=34, pattern=r"^[A-Za-z0-9 -]+$")
+    country: str = Field(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
+
+
+class VendorBankChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    request_id: str = Field(min_length=8, max_length=120, pattern=r"^[A-Za-z0-9._:-]+$")
+    idempotency_key: str = Field(min_length=16, max_length=120, pattern=r"^[A-Za-z0-9._:-]+$")
+    vendor_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9._:-]+$")
+    bank_details: BankDetails
+
+
+class VendorBankChangeApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    bank_details: BankDetails
+    confirm_exact_details: bool

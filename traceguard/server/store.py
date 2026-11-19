@@ -146,6 +146,39 @@ CREATE TABLE IF NOT EXISTS checklist_state (
   updated_utc TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS gate_requests (
+  gate_request_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  vendor_id TEXT NOT NULL,
+  requester TEXT NOT NULL,
+  requester_employee TEXT,
+  credential_id TEXT NOT NULL,
+  source_ip TEXT NOT NULL,
+  user_agent TEXT NOT NULL,
+  bank_fingerprint TEXT NOT NULL,
+  bank_details_ciphertext TEXT NOT NULL,
+  account_last4 TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reason_codes TEXT NOT NULL,
+  upstream_status INTEGER,
+  upstream_reference TEXT,
+  created_utc TEXT NOT NULL,
+  updated_utc TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS gate_requests_created ON gate_requests (created_utc);
+CREATE INDEX IF NOT EXISTS gate_requests_vendor ON gate_requests (vendor_id, created_utc);
+
+CREATE TABLE IF NOT EXISTS gate_approvals (
+  approval_id TEXT PRIMARY KEY,
+  gate_request_id TEXT NOT NULL,
+  approver TEXT NOT NULL,
+  bank_fingerprint TEXT NOT NULL,
+  created_utc TEXT NOT NULL,
+  UNIQUE (gate_request_id, approver),
+  FOREIGN KEY (gate_request_id) REFERENCES gate_requests(gate_request_id)
+);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   seq          INTEGER PRIMARY KEY,
   ts_utc       TEXT NOT NULL,

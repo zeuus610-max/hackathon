@@ -1,12 +1,12 @@
-# Orbit — CR-26-047 Defense Console
+# Orbit — CR-26-047 Vendor Change Gate
 
-Orbit is a local demonstration of a zero-trust request gate for sensitive vendor changes, plus an evidence-led review of the supplied synthetic CR-26-047 case. It combines the existing FastAPI evidence service with a React/Vite investigation console and the Orbit presentation.
+Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, holds the request for independent Finance approval of the exact submitted details, then forwards the approved change to a configured finance API. It never forwards before approval and fails closed if its security configuration or provider is missing.
 
-The detection console demonstrates request scoring, twin-record receipt checks, a deterministic legacy-key canary, clock uncertainty, and persistent evaluation history. It does not sit in a production API path, change vendor or payment records, or identify an attacker. Validation values are user-entered demonstration data unless independently measured.
+The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The sample evidence identifies a LedgerOne-shaped endpoint, but no real ERP connector or secrets are configured in this checkout.
 
 ## Architecture
 
-- `traceguard/server/` — FastAPI routes, evidence ingestion, UTC/clock handling, detections, SQLAlchemy-backed SQLite persistence for interactive state, and request simulation.
+- `traceguard/server/` — FastAPI request gate, evidence ingestion, UTC/clock handling, detections, and persistence.
 - `traceguard/frontend/` — React, Vite, Tailwind CSS, Recharts, Framer Motion, and Lucide-based five-section console.
 - `traceguard/web/` — static Orbit presentation and read-only historical review; Vite production output is built to `web/console/`.
 - `evidence/` — source case records. Original timestamps and missing telemetry remain visible in the evidence model.
@@ -40,6 +40,61 @@ Open `http://localhost:5173` for the five-section defense console. Vite proxies 
 
 The existing Orbit overview is at `http://localhost:8000/`; the read-only case review is at `http://localhost:8000/review/`.
 
+## Request-time bank-change gate
+
+The gate is disabled by default. `GET /api/gate/status` reports whether gate secrets and an upstream finance connector are present. Without the required gate keys, a bank-change request is rejected with `503`; no request is treated as safe by default.
+
+Before enabling it, configure `ORBIT_GATE_CREDENTIALS_JSON`, `ORBIT_DATA_ENCRYPTION_KEY`, and `ORBIT_BANK_FIELD_HMAC_KEY` in the backend environment. Use token hashes in the JSON; raw caller tokens are held by the calling service and never stored by Orbit. A credential entry has this shape:
+
+```json
+[
+  {
+    "principal": "tallybridge-service",
+    "role": "integration",
+    "active": true,
+    "credential_id": "key-tb-07",
+    "token_sha256": "<sha256-of-caller-token>",
+    "scopes": ["vendor:read"],
+    "vendor_ids": ["*"]
+  },
+  {
+    "principal": "finance-maker-1",
+    "role": "finance_maker",
+    "active": true,
+    "employee_username": "n.ansari",
+    "token_sha256": "<sha256-of-user-token>",
+    "scopes": ["vendor:bank-change"],
+    "vendor_ids": ["V-0412"]
+  },
+  {
+    "principal": "finance-approver-1",
+    "role": "finance_approver",
+    "active": true,
+    "employee_username": "a.desai",
+    "token_sha256": "<sha256-of-approver-token>",
+    "vendor_ids": ["V-0412"]
+  }
+]
+```
+
+Finance principals are checked against the imported employee status and termination date on every call. Integration principals are checked against the imported credential status. The case's `key-tb-07` broad scope does not grant `vendor:bank-change`; a request from it is recorded as `BLOCKED`. Any use of `key-tb-03` creates a `CRITICAL_CANARY` state. These records come from the supplied case package; a real installation must replace that identity source with its IdP/credential lifecycle feed.
+
+The workflow is:
+
+1. `POST /api/gate/vendor-changes` authenticates the caller and stores a request as `HELD` or `BLOCKED`. Bank details are encrypted at rest; audit events contain only a keyed fingerprint and last four characters.
+2. A separate active Finance approver can inspect a held request with `GET /api/gate/requests/{id}` and approve only by resubmitting the exact bank details with `confirm_exact_details: true`. Mismatches, self-approval, expired identities, or out-of-scope vendors are rejected.
+3. After approval, Orbit sends a `PATCH` to `{ORBIT_FINANCE_API_BASE_URL}/v2/vendors/{vendor_id}/bank-details` with a server-side `ORBIT_FINANCE_API_TOKEN` and an idempotency key. An unconfigured connector or uncertain upstream response remains `APPROVED_PENDING_PROVIDER`; Orbit does not report success.
+
+Generate fresh secrets in the deployment secret manager. Example local key generation:
+
+```sh
+python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+python -c 'import secrets; print(secrets.token_urlsafe(48))'
+python -c 'import hashlib; print(hashlib.sha256(b"replace-with-a-random-caller-token").hexdigest())'
+```
+
+Only enable `vendor:bank-change` for the identities and vendors that need it. Do not expose the current local console publicly: its investigation endpoints are not protected by the gate's caller authentication. For production, place the finance API behind network controls that prevent callers from bypassing Orbit, replace the case roster with the organization's IdP, and use durable shared database storage and HTTPS ingress.
+
 ## Production-style local build
 
 ```sh
@@ -71,6 +126,10 @@ Run `traceguard/supabase/schema.sql` in the Supabase SQL editor first. The backe
 Interactive documentation: `http://localhost:8000/docs`.
 
 - `GET /api/health` — API time, last evidence ingest, database provider and connectivity.
+- `GET /api/gate/status` — gate configuration status without returning secrets.
+- `POST /api/gate/vendor-changes` — authenticated, encrypted, fail-closed bank-change request.
+- `GET /api/gate/requests` and `GET /api/gate/requests/{id}` — Finance approval queue and protected review details.
+- `POST /api/gate/requests/{id}/approvals` — exact-detail Finance approval, followed by an upstream write only when configured.
 - `GET /api/topology` — systems, links, ranges, credential state, blind spots.
 - `GET /api/timeline?normalized=true|false&tolerance_s=900` — source records, UTC normalization, and E05 uncertainty.
 - `POST /api/engine/evaluate` — validated request payload and PASS, QUARANTINE, or CRITICAL_CANARY result.
@@ -89,8 +148,8 @@ traceguard/.venv/bin/python -m pytest traceguard/tests -q
 cd traceguard/frontend && npm run build
 ```
 
-The tests cover expected preset verdicts, missing twin-proof behavior, canary priority and persistence, validation metric calculation, SHA-256 evidence hashing, and API health/topology/timeline/history routes.
+The tests cover expected scoring verdicts, missing twin-proof behavior, canary priority, the CR-26-047 TallyBridge block, terminated-employee rejection, exact Finance approval, idempotency, encrypted storage, fail-closed configuration, upstream forwarding only after approval, provider failure handling, validation metrics, SHA-256 evidence hashing, and API routes.
 
 ## Security limitations
 
-This is a local demonstration with no analyst authentication. Do not expose it publicly. Supabase uses a backend-only service key and server-side calls; RLS is enabled without browser policies. The demo scoring thresholds are configurable in `traceguard/server/engine.py`, are not calibrated against a representative dataset, and are not validated production detection performance. Orbit’s real-time prevention claim is architectural: this prototype does not enforce requests against LedgerOne or any other production system.
+The request gate is implemented but is not connected to a real ERP in this environment: the finance product, API credentials, and upstream access controls have not been provided. It only protects changes routed through its endpoint; direct finance API access would bypass it. The frontend and historical evidence endpoints have no analyst login and must stay private until organization SSO/RBAC is connected. Supplied roster and credential state are historical case data, not live identity state. Scoring thresholds are not calibrated production detection performance. Never turn on the bank-change scope or route production traffic until the provider contract, identity source, key custody, direct-write lockout, database durability, and failure behavior have been verified in that provider's sandbox.
