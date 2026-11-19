@@ -135,15 +135,18 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
             routing_code = bank_details["routing_code"]
             if re.fullmatch(r"\d{6}", routing_code):
                 routing_code = f"{routing_code[:3]}-{routing_code[3:]}"
+            bank_fields = {
+                "BankAccountName": bank_details["account_holder"],
+                "BankBranchIdentifier": routing_code,
+                "BankAccountNumber": bank_details["account_number"],
+            }
+            statement_text = bank_details.get("statement_text")
+            if statement_text:
+                bank_fields["StatementText"] = statement_text
             body.update({
                 "Id": resolved_id,
                 "SyncToken": str(sync_token),
-                "VendorPaymentBankDetail": {
-                    "BankAccountName": bank_details["account_holder"],
-                    "BankBranchIdentifier": routing_code,
-                    "BankAccountNumber": bank_details["account_number"],
-                    "StatementText": bank_details.get("statement_text", ""),
-                },
+                "VendorPaymentBankDetail": bank_fields,
             })
             updated = await client.post(
                 base,
