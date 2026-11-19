@@ -3,17 +3,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#061019">
+    <meta name="theme-color" content="#000000">
     <meta name="description" content="Orbit holds risky vendor bank changes until identity, permission, approval, and risk checks pass.">
     <title>Orbit — Stop risky vendor changes before payment</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/landing.css">
     <script defer src="/landing.js"></script>
   </head>
   <body>
     <div class="backdrop" aria-hidden="true"></div>
+    <div class="wave-art" aria-hidden="true">
+      <svg viewBox="0 0 1600 950" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="silver-wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7f7f7"/><stop offset=".38" stop-color="#bdbdbd"/><stop offset=".72" stop-color="#e6e6e6"/><stop offset="1" stop-color="#898989"/></linearGradient>
+          <filter id="wave-grain" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="8" result="grain"/><feDisplacementMap in="SourceGraphic" in2="grain" scale="17" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <path d="M-100 102C137 48 330 84 513 205c179 119 277 260 470 369 174 98 325 125 505 57 105-40 193-113 292-137v445c-201 25-347 6-525-48-219-67-349-176-548-249-211-78-365-68-536 29-97 55-177 119-271 166Z" fill="url(#silver-wave)" filter="url(#wave-grain)"/>
+      </svg>
+    </div>
     <header class="topbar">
       <a class="brand" href="#slide-1" aria-label="Orbit home">
         <svg class="brand-mark" viewBox="0 0 40 40" role="img" aria-label=""><circle class="mark-orbit" cx="20" cy="20" r="14"/><ellipse class="mark-ring" cx="20" cy="20" rx="19" ry="8" transform="rotate(-34 20 20)"/><circle class="mark-core" cx="20" cy="20" r="3.2"/><circle class="mark-satellite" cx="34.3" cy="10.7" r="2.4"/></svg>
@@ -25,17 +34,17 @@
         <button class="nav-item" data-go="2" type="button"><span>03</span>Live gate</button>
         <button class="nav-item" data-go="3" type="button"><span>04</span>Response</button>
       </nav>
-      <div class="top-status"><i></i> PREVENTION MODE</div>
+      <button class="primary-button header-cta" data-go="2" type="button">Explore the gate <span aria-hidden="true">↗</span></button>
     </header>
 
     <main class="deck" aria-live="polite">
       <section class="slide slide-hero is-current" id="slide-1" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-line"></span> A REQUEST-TIME CONTROL FOR FINANCE</div>
-          <h1 id="hero-title">Stop risky vendor changes <em>before they reach payment.</em></h1>
-          <p>Orbit sits in the path of sensitive bank-detail updates. It checks the request, holds what cannot be verified, and gives Finance a clear decision to make.</p>
-          <button class="primary-button" data-go="2" type="button">See Orbit stop a change <span aria-hidden="true">↗</span></button>
-          <div class="proof-points"><span><b>01</b> Check the request</span><span><b>02</b> Hold what fails</span><span><b>03</b> Keep the evidence</span></div>
+          <div class="eyebrow"><span class="eyebrow-line"></span> REQUEST-TIME CONTROL FOR FINANCE</div>
+          <h1 id="hero-title">Hold vendor changes<br><em>before payment.</em></h1>
+          <p>Orbit checks identity, vendor permission, exact Finance approval, and request context before a sensitive bank change can take effect.</p>
+          <button class="primary-button" data-go="2" type="button">See the request gate <span aria-hidden="true">↗</span></button>
+          <div class="proof-points" aria-label="Orbit controls"><span><b>04</b> checks before commit</span><span><b>HOLD</b> changes that fail</span><span><b>0</b> live writes in this prototype</span></div>
         </div>
         <div class="hero-scene" aria-label="Orbit holding an unverified vendor bank change">
           <div class="scene-orbit orbit-a"></div><div class="scene-orbit orbit-b"></div><div class="scene-orbit orbit-c"></div>
