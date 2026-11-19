@@ -1,3 +1,6 @@
 fastapi>=0.115
 uvicorn>=0.34
 python-multipart>=0.0.20
+SQLAlchemy>=2.0
+supabase>=2.10
+pytest>=8.0

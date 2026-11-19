@@ -105,6 +105,47 @@ CREATE TABLE IF NOT EXISTS findings (
 );
 CREATE INDEX IF NOT EXISTS findings_run ON findings (run_id);
 
+CREATE TABLE IF NOT EXISTS eval_history (
+  evaluation_id TEXT PRIMARY KEY,
+  created_utc TEXT NOT NULL,
+  key_id TEXT NOT NULL,
+  user_agent TEXT NOT NULL,
+  caller_ip TEXT NOT NULL,
+  verdict TEXT NOT NULL,
+  risk_score INTEGER NOT NULL,
+  triggered_rules TEXT NOT NULL,
+  canary INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  result TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS eval_history_created ON eval_history (created_utc);
+CREATE TABLE IF NOT EXISTS canary_alerts (
+  id INTEGER PRIMARY KEY,
+  evaluation_id TEXT NOT NULL,
+  created_utc TEXT NOT NULL,
+  key_id TEXT NOT NULL,
+  payload TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS validation_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  true_positives INTEGER NOT NULL DEFAULT 0,
+  false_positives INTEGER NOT NULL DEFAULT 0,
+  missed_detections INTEGER NOT NULL DEFAULT 0,
+  evidence_row_ids TEXT NOT NULL DEFAULT '[]',
+  metadata TEXT NOT NULL DEFAULT '{}',
+  updated_utc TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS evidence_references (
+  evidence_id TEXT PRIMARY KEY,
+  row_reference TEXT NOT NULL DEFAULT '',
+  updated_utc TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS checklist_state (
+  item_id TEXT PRIMARY KEY,
+  checked INTEGER NOT NULL DEFAULT 0,
+  updated_utc TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   seq          INTEGER PRIMARY KEY,
   ts_utc       TEXT NOT NULL,

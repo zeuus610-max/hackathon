@@ -1,4 +1,5 @@
 import json
+import hashlib
 import shutil
 import tempfile
 from pathlib import Path
@@ -6,7 +7,11 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 
 from . import clocks, detections, ingest
-from .config import CASE_ID, COMPANY, TRACK
+from .config import CASE_ID, COMPANY, EVIDENCE_DIR, TRACK
+from .engine import PRESETS, evaluate as evaluate_request
+from .schemas import (ChecklistUpdate, EvaluationRequest, EvidenceHashRequest,
+                      EvidenceReferencesUpdate, ValidationUpdate)
+from .store import utcnow
 
 router = APIRouter(prefix="/api")
 
@@ -68,6 +73,27 @@ def case_summary(request: Request):
 def evidence_list(request: Request):
     return {"evidence": store_of(request).query(
         "SELECT * FROM evidence ORDER BY evidence_id")}
+
+
+@router.post("/evidence/hash")
+def hash_evidence(payload: EvidenceHashRequest, request: Request):
+    """Hash only a known case artefact under the configured evidence directory."""
+    spec = ingest.PLAN_BY_ID.get(payload.evidence_id)
+    if spec is None:
+        raise HTTPException(404, "Unknown evidence ID")
+    source = (EVIDENCE_DIR / spec.filename).resolve()
+    root = EVIDENCE_DIR.resolve()
+    if root not in source.parents or not source.is_file():
+        raise HTTPException(404, "Evidence file is not available for hashing")
+    digest = hashlib.sha256()
+    with source.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    store_of(request).audit("analyst", "evidence.sha256", payload.evidence_id,
+                            {"sha256": digest.hexdigest(), "filename": spec.filename})
+    return {"evidence_id": payload.evidence_id, "filename": spec.filename,
+            "sha256": digest.hexdigest(), "algorithm": "SHA-256",
+            "source": "configured case evidence directory"}
 
 
 @router.get("/clocks")
@@ -223,3 +249,163 @@ async def upload(request: Request, file: UploadFile = File(...),
     detection = detections.run_all(store, actor="analyst")
     store.set_meta("last_run", detection["run_id"])
     return {"ingest": result, "analysis": detection}
+
+
+@router.get("/health")
+def api_health(request: Request):
+    store = store_of(request)
+    try:
+        request.app.state.persistence.health()
+        connected = True
+    except Exception:
+        connected = False
+    return {"status": "ok" if connected else "degraded", "database_provider": request.app.state.persistence.provider,
+            "database_connected": connected, "current_utc": utcnow(),
+            "last_sync_utc": getattr(request.app.state, "boot", {}).get("last_sync_utc"),
+            "version": request.app.version}
+
+
+@router.get("/topology")
+def topology(request: Request):
+    store = store_of(request)
+    credentials = store.query("SELECT credential_id, integration, system, scope, owner, token_lifetime, ip_restricted, status FROM credentials ORDER BY credential_id")
+    return {
+        "systems": [
+            {"id": "ledgerone", "name": "LedgerOne", "type": "finance", "contains": ["invoices", "vendor bank details", "payments"]},
+            {"id": "tallybridge", "name": "TallyBridge Connect", "type": "integration", "human_sign_in": False},
+            {"id": "helpdeskr", "name": "HelpDeskr", "type": "support"},
+            {"id": "bluevault", "name": "BlueVault", "type": "storage"},
+            {"id": "sso", "name": "SSO", "type": "staff authentication", "integration": False},
+        ],
+        "relationships": [{"from": "ledgerone", "to": "tallybridge", "kind": "API"},
+                          {"from": "tallybridge", "to": "helpdeskr", "kind": "nightly sync"},
+                          {"from": "bluevault", "to": "ledgerone", "kind": "unverified time correlation"},
+                          {"from": "sso", "to": "staff", "kind": "authentication"}],
+        "network_ranges": [{"cidr": "172.16.0.0/16", "label": "Office and servers"},
+                           {"cidr": "10.20.4.0/24", "label": "Vendor private link", "trusted_by_ip_alone": False},
+                           {"label": "Remote staff", "range": "Home ISP addresses"}],
+        "credentials": credentials,
+        "blind_spots": ["E05 clock is unsynchronized and source IPs are missing.",
+                        "E17 indicator list may be incomplete.",
+                        "Current E04 state does not establish historical credential changes."],
+    }
+
+
+@router.get("/timeline")
+def timeline(request: Request, normalized: bool = True,
+             tolerance_s: int = Query(900, ge=0, le=86_400),
+             limit: int = Query(1000, ge=1, le=5000)):
+    store = store_of(request)
+    rows = store.query("SELECT id, evidence_id, system, raw_ts, ts_utc, ts_ms, clock, actor, api_key_id, source_ip, user_agent, action, endpoint, object_id, raw FROM events ORDER BY ts_ms LIMIT ?", (limit,))
+    e05_times = [r["ts_ms"] for r in store.query("SELECT ts_ms FROM events WHERE evidence_id = 'E05'")]
+    reference_times = [r["ts_ms"] for r in store.query("SELECT ts_ms FROM events WHERE evidence_id IN ('E01','E03','E15','E18')")]
+    drift_assessment = clocks.bound_offset(e05_times, reference_times)
+    result = []
+    for row in rows:
+        raw = json.loads(row.pop("raw") or "{}")
+        evidence_id = row["evidence_id"]
+        spec = clocks.CLOCK_SPECS.get(evidence_id)
+        row["original_timestamp"] = row["raw_ts"]
+        row["source_timezone"] = "UTC+05:30" if evidence_id in ("E02", "E13") else ("UNSYNCHRONIZED UNIX EPOCH" if evidence_id == "E05" else "UTC")
+        corrected = row["ts_utc"]
+        if evidence_id == "E05":
+            # Only apply the profile-derived shift if the existing clock model can
+            # identify it; otherwise retain the raw epoch and expose its band.
+            lag = drift_assessment.get("best_lag_s") if drift_assessment.get("verdict") == "identified" else None
+            corrected = clocks.iso(row["ts_ms"] - int(lag * 1000)) if lag is not None else None
+        row["normalized_timestamp"] = corrected if normalized else None
+        row["timestamp"] = (corrected or "UNALIGNED · " + str(row["raw_ts"])) if normalized and evidence_id == "E05" else (row["ts_utc"] if normalized else row["raw_ts"])
+        row["source_ip"] = row["source_ip"] or "UNKNOWN"
+        row["uncertainty"] = {"tolerance_s": tolerance_s, "from": clocks.iso(row["ts_ms"] - tolerance_s * 1000), "to": clocks.iso(row["ts_ms"] + tolerance_s * 1000), "exact": False, "drift_assessment": drift_assessment} if evidence_id == "E05" else None
+        row["clock_status"] = "UNALIGNED" if evidence_id == "E05" and corrected is None else ("ALIGNED" if spec and spec.verifiable else "UNKNOWN")
+        row["clock_verifiable"] = spec.verifiable if spec else False
+        row["extra"] = raw.get("extra", {})
+        row["correlation"] = {"request_id": row.get("object_id") or "UNRESOLVED", "key_id": row.get("api_key_id") or "UNRESOLVED", "caller_ip": row.get("source_ip") or "UNKNOWN", "user_agent": row.get("user_agent") or "UNRESOLVED"}
+        result.append(row)
+    return {"normalized": normalized, "timezone": "UTC" if normalized else "SOURCE", "tolerance_s": tolerance_s,
+            "drift_assessment": drift_assessment, "events": result}
+
+
+@router.get("/engine/presets")
+def engine_presets():
+    return {"presets": {name: payload.model_dump() for name, payload in PRESETS.items()}}
+
+
+@router.post("/engine/evaluate")
+def engine_evaluate(payload: EvaluationRequest, request: Request):
+    store = store_of(request)
+    result = evaluate_request(payload)
+    request.app.state.persistence.save_evaluation(payload, result)
+    store.audit("analyst", "engine.evaluate", result["evaluation_id"], {"verdict": result["verdict"], "canary": result["canary"]})
+    return result
+
+
+@router.get("/engine/history")
+def engine_history(request: Request, limit: int = Query(100, ge=1, le=1000)):
+    rows = request.app.state.persistence.history(limit)
+    for row in rows:
+        if isinstance(row.get("triggered_rules"), str):
+            row["triggered_rules"] = json.loads(row["triggered_rules"])
+        row["evaluation_id"] = row.get("evaluation_id") or row.get("id")
+        row["timestamp"] = row.get("timestamp") or row.get("created_utc")
+        row["canary"] = bool(row["canary"])
+    return {"evaluations": rows}
+
+
+def _validation_result(row):
+    row = row or {"true_positives": 0, "false_positives": 0, "missed_detections": 0, "evidence_row_ids": "[]", "metadata": "{}", "updated_utc": None}
+    tp, fp, missed = row["true_positives"], row["false_positives"], row["missed_detections"]
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + missed) if tp + missed else 0.0
+    evidence_ids = row["evidence_row_ids"]
+    metadata = row["metadata"]
+    if isinstance(evidence_ids, str):
+        evidence_ids = json.loads(evidence_ids or "[]")
+    if isinstance(metadata, str):
+        metadata = json.loads(metadata or "{}")
+    return {"true_positives": tp, "false_positives": fp, "missed_detections": missed,
+            "precision": precision, "recall": recall,
+            "f1": 2 * precision * recall / (precision + recall) if precision + recall else 0.0,
+            "evidence_row_ids": evidence_ids,
+            "metadata": metadata, "updated_utc": row["updated_utc"],
+            "performance_label": "User-entered demonstration values; not experimentally validated."}
+
+
+@router.get("/validation")
+def validation(request: Request):
+    row = request.app.state.persistence.get_validation()
+    return _validation_result(row)
+
+
+@router.post("/validation")
+def update_validation(payload: ValidationUpdate, request: Request):
+    store = store_of(request)
+    row = request.app.state.persistence.save_validation(payload)
+    store.audit("analyst", "validation.update", CASE_ID, payload.model_dump())
+    return _validation_result(row)
+
+
+@router.get("/evidence-references")
+def evidence_references(request: Request):
+    rows = request.app.state.persistence.references()
+    return {"references": rows}
+
+
+@router.post("/evidence-references")
+def update_evidence_references(payload: EvidenceReferencesUpdate, request: Request):
+    store = store_of(request)
+    request.app.state.persistence.save_references(payload.references)
+    store.audit("analyst", "evidence.references.update", CASE_ID, payload.references)
+    return evidence_references(request)
+
+
+@router.get("/checklist")
+def checklist(request: Request):
+    return {"items": request.app.state.persistence.checklist()}
+
+
+@router.post("/checklist")
+def update_checklist(payload: ChecklistUpdate, request: Request):
+    store = store_of(request)
+    request.app.state.persistence.save_checklist(payload.item_id, payload.checked)
+    return {"item_id": payload.item_id, "checked": payload.checked}
