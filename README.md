@@ -2,7 +2,7 @@
 
 Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, holds the request for independent Finance approval of the exact submitted details, then forwards the approved change to a configured finance API. It never forwards before approval and fails closed if its security configuration or provider is missing.
 
-The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The QBO sandbox connector is implemented, but it is not connected to an Intuit developer app or sandbox company in this checkout.
+The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. This workspace has a local-only connection to an Intuit QuickBooks Online sandbox; credentials are kept in ignored, permission-restricted local configuration and are not part of this repository.
 
 ## Architecture
 
@@ -90,10 +90,10 @@ The workflow is:
 1. Create an Intuit developer account and app, enable the Accounting API scope, and authorize it against a sandbox company. Intuit supplies sandbox companies and app credentials through its developer portal.
 2. Obtain the app's OAuth client ID, client secret, sandbox realm ID, and refresh token from the OAuth authorization flow. Do not use production credentials or a production realm ID; Orbit's QBO adapter is deliberately pinned to `https://sandbox-quickbooks.api.intuit.com`.
 3. Set `ORBIT_FINANCE_PROVIDER=qbo`, `ORBIT_QBO_REALM_ID`, `ORBIT_QBO_CLIENT_ID`, `ORBIT_QBO_CLIENT_SECRET`, and `ORBIT_QBO_REFRESH_TOKEN` in the deployment's secret manager. The Orbit encryption key must also be configured to protect rotated refresh tokens.
-4. Map each Orbit vendor ID to the corresponding QBO Vendor `Id` in the request caller's vendor scope. The adapter reads QBO's current `SyncToken` immediately before the sparse update, so a concurrent vendor edit causes QBO to reject the stale update rather than overwrite it.
+4. Map each Orbit vendor ID to the corresponding QBO Vendor `Id` with `ORBIT_QBO_VENDOR_ID_MAP_JSON`, for example `{"V-0412":"58"}`. Keep authorization scopes on the Orbit vendor ID (`V-0412`); the connector resolves it to QBO's ID only after approval. The adapter reads QBO's current `SyncToken` immediately before the sparse update, so a concurrent vendor edit causes QBO to reject the stale update rather than overwrite it.
 5. Test only with a sandbox vendor and dummy bank values. Intuit's sandbox demonstrates accounting API writes; it does not move funds. A production deployment also needs every vendor bank write routed through Orbit and direct QBO write access restricted, or callers can bypass the gate.
 
-The connector is not live until Intuit OAuth credentials and a sandbox realm ID are configured. No Intuit credentials or connected QBO company are included in this repository.
+The local sandbox connection does not connect production books or move funds. No Intuit credentials are included in this repository. The case-based sandbox Vendor `Coastal Packaging Ltd` has no bank details until an independently approved change is applied.
 
 Generate fresh secrets in the deployment secret manager. Example local key generation:
 

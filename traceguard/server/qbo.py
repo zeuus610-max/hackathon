@@ -20,6 +20,22 @@ class QBOError(Exception):
     """Safe, non-secret error suitable for an audit event."""
 
 
+def _qbo_vendor_id(orbit_vendor_id: str) -> str:
+    """Resolve a case/vendor ID to its QBO sandbox Vendor ID when configured."""
+    raw = os.getenv("ORBIT_QBO_VENDOR_ID_MAP_JSON", "")
+    if not raw:
+        return orbit_vendor_id
+    try:
+        mapping = json.loads(raw)
+        if (not isinstance(mapping, dict)
+                or not all(isinstance(k, str) and isinstance(v, str) and v
+                           for k, v in mapping.items())):
+            raise ValueError("Expected string vendor ID mapping")
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise QBOError("QuickBooks vendor ID mapping is invalid") from exc
+    return mapping.get(orbit_vendor_id, orbit_vendor_id)
+
+
 def _cipher() -> Fernet:
     try:
         return Fernet(os.environ["ORBIT_DATA_ENCRYPTION_KEY"].encode("ascii"))
@@ -78,6 +94,7 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
     """
     if not all((realm_id, client_id, client_secret, initial_refresh_token, vendor_id)):
         raise QBOError("QuickBooks sandbox OAuth configuration is incomplete")
+    vendor_id = _qbo_vendor_id(vendor_id)
     base = f"{SANDBOX_API}/{quote(realm_id, safe='')}/vendor"
     vendor_url = f"{base}/{quote(vendor_id, safe='')}"
     try:
