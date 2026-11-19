@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f8f7f4">
+    <meta name="description" content="Orbit checks vendor bank-detail changes against integration scope and Finance approval before the next payment run.">
+    <title>Orbit · Vendor change control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/landing.css">
+    <script defer src="/landing.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href="#home" aria-label="Orbit home"><img src="/assets/orbit-mark.png" alt=""><span>orbit<span class="wordmark-dot">.</span></span></a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="#problem">The problem</a>
+        <a href="#how">How Orbit works</a>
+        <a href="#architecture">Architecture</a>
+      </nav>
+      <a class="header-cta" href="/review/">Open case review <span aria-hidden="true">↗</span></a>
+      <button id="menu-toggle" class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open navigation"><span></span><span></span></button>
+    </header>
+
+    <main id="home">
+      <section class="hero section-wrap">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-mark"></span> VENDOR CHANGE CONTROL <span class="eyebrow-separator">/</span> CRIMEATHON ’26</div>
+          <h1>Bank changes should be <em>verified,</em> not just logged.</h1>
+          <p class="hero-lede">Orbit puts a gate in front of sensitive vendor changes. It checks identity, per-vendor permission, Finance approval and risk context before new bank details can take effect.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="/review/">Explore the case <span aria-hidden="true">→</span></a>
+            <a class="button button-link" href="#how">See how it works <span aria-hidden="true">↓</span></a>
+          </div>
+          <div class="hero-proof"><span class="proof-avatars"><i>F</i><i>IT</i><i>AP</i></span><span>One change. Its approval. The records behind it.</span></div>
+        </div>
+
+        <div class="hero-visual" aria-label="Example vendor bank change review">
+          <div class="orbit-ring ring-one"></div><div class="orbit-ring ring-two"></div>
+          <div class="review-card">
+            <div class="review-card-top"><div class="mini-brand"><img src="/assets/orbit-mark.png" alt=""><span>ORBIT REVIEW</span></div><span class="case-label">CR-26-047</span></div>
+            <div class="review-state"><span class="state-icon">!</span><div><strong>Approval not linked</strong><span>Bank detail change · Vendor API</span></div><span class="state-tag">REVIEW</span></div>
+            <div class="review-vendor"><span class="vendor-avatar">CP</span><div><strong>Coastal Packaging Ltd</strong><span>Vendor V-0412 · LedgerOne</span></div><span class="source-mark">E18 + E19</span></div>
+            <div class="account-row"><div><span>PREVIOUS ACCOUNT</span><strong>•••• 4417</strong></div><span class="account-arrow">→</span><div><span>NEW ACCOUNT</span><strong>•••• 9083</strong></div></div>
+            <div class="mini-timeline">
+              <div><i></i><span>Vendor and payment records read</span><time>01:41 UTC</time></div>
+              <div class="timeline-alert"><i></i><span>Bank details changed · approval blank</span><time>01:44 UTC</time></div>
+            </div>
+            <div class="card-action"><span><b>Next step</b><small>Verify with Finance before payment</small></span><span class="action-arrow">↗</span></div>
+          </div>
+          <div class="visual-caption"><span class="caption-dot"></span> REQUEST-TIME CONTROL <span>·</span> EVIDENCE-LINKED</div>
+        </div>
+      </section>
+
+      <section class="proof-strip" aria-label="Case indicators">
+        <div><strong data-count="71">71</strong><span>API changes reviewed</span></div>
+        <div><strong data-count="70">70</strong><span>Contact updates in scope</span></div>
+        <div><strong data-count="1">1</strong><span>Bank change needing approval review</span></div>
+        <p>Grounded in case CR-26-047 <span>·</span> evidence E18 and E19</p>
+      </section>
+
+      <section id="problem" class="problem-section section-wrap">
+        <div class="section-intro">
+          <div class="eyebrow"><span class="eyebrow-mark"></span> THE PROBLEM</div>
+          <h2>Three access gaps. One sensitive change with no gate.</h2>
+          <p>The case shows overlapping weaknesses across integration access, Finance files and offboarding. They are important signals to contain; the evidence does not prove one actor connected them.</p>
+        </div>
+        <div class="problem-grid">
+          <article class="problem-card"><span class="card-index">01</span><div class="problem-icon icon-scope"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg></div><h3>TallyBridge access was broad</h3><p>The integration key was used for unusual exports and later for a successful vendor bank-detail update.</p><span class="card-evidence">CASE SIGNAL <b>E01 · E04 · E18</b></span></article>
+          <article class="problem-card"><span class="card-index">02</span><div class="problem-icon icon-approval"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 7v5c0 4.7 3.5 7.6 9 9 5.5-1.4 9-4.3 9-9V7l-9-4Z"/><path d="M12 8v5m0 3h.01"/></svg></div><h3>BlueVault key was exposed</h3><p>A support-ticket key was used to read finance files. Its unsynchronized clock leaves cross-system timing uncertain.</p><span class="card-evidence">CASE SIGNAL <b>E05 · E13</b></span></article>
+          <article class="problem-card"><span class="card-index">03</span><div class="problem-icon icon-payment"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-13 5h4"/></svg></div><h3>Offboarding did not close access</h3><p>Rohan’s account authenticated after his termination date. The log does not establish who used it.</p><span class="card-evidence">CASE SIGNAL <b>E03 · E14</b></span></article>
+        </div>
+        <div class="problem-outcome"><span class="outcome-symbol">!</span><p><strong>The gap Orbit addresses:</strong> there was no reliable gate to stop or hold a sensitive bank change when identity, vendor permission, approval or risk checks needed review.</p></div>
+      </section>
+
+      <section id="how" class="how-section">
+        <div class="section-wrap how-inner">
+          <div class="how-heading"><div class="eyebrow"><span class="eyebrow-mark"></span> WHAT ORBIT CAN STOP</div><h2>Check the request<br>before it takes effect.</h2><p>Each sensitive change passes through four checks. If any one fails, Orbit holds it for a reviewer.</p><div class="gate-result"><span>Failed check</span><b>Hold · Alert · Preserve evidence</b></div></div>
+          <div class="steps">
+            <article class="step-card"><span class="step-number">01</span><div><h3>Identity and credential</h3><p>Check that the user or integration is active, and that its credential is restricted and valid for this use.</p><span class="step-tag">ACTIVE · RESTRICTED · VALID</span></div></article>
+            <article class="step-card"><span class="step-number">02</span><div><h3>Permission for this vendor</h3><p>Check the exact vendor and field. A contact-sync integration should not be able to edit a bank account.</p><span class="step-tag">OBJECT-LEVEL ACCESS</span></div></article>
+            <article class="step-card"><span class="step-number">03</span><div><h3>Approval for these details</h3><p>Match Finance approval to this vendor and the exact new bank details—not just a generic approval number.</p><span class="step-tag">VENDOR + ACCOUNT</span></div></article>
+            <article class="step-card"><span class="step-number">04</span><div><h3>Risk context</h3><p>Review source, client version and related activity. Uncertain clocks stay marked uncertain; context raises review, not a verdict.</p><span class="step-tag">SOURCE · VERSION · ACTIVITY</span></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="architecture-section section-wrap">
+        <div class="architecture-copy"><div class="eyebrow"><span class="eyebrow-mark"></span> BUILT AROUND EVIDENCE</div><h2>Every request.<br>Four checks. One decision.</h2><p>Orbit evaluates identity, permission, approval and risk context before a bank change is committed. If something is missing, it holds the request and keeps the supporting records together.</p><p class="prototype-disclosure">The case review is a read-only prototype. Live blocking requires the gate to sit in the vendor-change API path.</p><a class="inline-link" href="/review/">Open the CR-26-047 review <span aria-hidden="true">↗</span></a></div>
+        <div class="architecture-demo">
+          <div class="architecture-top"><span>ORBIT · REVIEW FLOW</span><span class="architecture-live"><i></i> CASE DATA</span></div>
+          <div class="architecture-canvas">
+            <div class="flow-source">
+              <button class="flow-node selected" type="button" data-node="identity" aria-pressed="true"><span class="node-icon node-api"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20c.6-3.6 2.8-5.5 7-5.5s6.4 1.9 7 5.5"/></svg></span><span><b>Identity + key</b><small>E03 · E04 · E14</small></span><span class="node-check">01</span></button>
+              <button class="flow-node" type="button" data-node="permission" aria-pressed="false"><span class="node-icon node-scope"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 7v5c0 4.7 3.5 7.6 9 9 5.5-1.4 9-4.3 9-9V7l-9-4Z"/><path d="M8 12h8"/></svg></span><span><b>Vendor permission</b><small>E04 · E16 · per-vendor</small></span><span class="node-check">02</span></button>
+              <button class="flow-node" type="button" data-node="approval" aria-pressed="false"><span class="node-icon node-change"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg></span><span><b>Finance approval</b><small>E19 · exact account</small></span><span class="node-check">03</span></button>
+              <button class="flow-node" type="button" data-node="risk" aria-pressed="false"><span class="node-icon node-api"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6m0 12h16M8 14l3-4 3 2 5-6"/></svg></span><span><b>Risk context</b><small>E01 · E05 · E18</small></span><span class="node-check">04</span></button>
+            </div>
+            <div class="flow-connector"><span></span><span></span><span></span><span></span></div>
+            <div class="decision-node"><span class="decision-label">REVIEW OUTCOME</span><div class="decision-status"><i>!</i><b>Hold for Finance</b></div><p id="node-description">Check active status, key ownership, expiry and restrictions. The case shows a broad TallyBridge key and a post-termination account sign-in.</p><div class="decision-footer"><span>CHECKS EVALUATED</span><b>4 / 4</b></div></div>
+          </div>
+          <div class="architecture-bottom"><span>FOUR CHECKS RUN · FAILED CHECKS HOLD THE WRITE</span><span id="selected-source">IDENTITY + CREDENTIAL</span></div>
+        </div>
+      </section>
+
+      <section class="closing-section"><div class="closing-inner section-wrap"><div><div class="eyebrow"><span class="eyebrow-mark"></span> ORBIT · CR-26-047</div><h2>Make the next sensitive change<br>easy to verify.</h2><p>Start with the one bank update that needs a Finance answer.</p></div><a class="button button-primary" href="/review/">Open the case review <span aria-hidden="true">→</span></a></div></section>
+    </main>
+
+    <footer class="site-footer"><a class="wordmark footer-wordmark" href="#home"><img src="/assets/orbit-mark.png" alt=""><span>orbit<span class="wordmark-dot">.</span></span></a><span>Evidence-led vendor change control · CRIMEATHON ’26</span><a href="/review/">Case review <span aria-hidden="true">↗</span></a></footer>
+  </body>
+</html>
