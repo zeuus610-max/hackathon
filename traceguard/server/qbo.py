@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 from urllib.parse import quote
 
 import httpx
@@ -12,6 +13,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 
 SANDBOX_API = "https://sandbox-quickbooks.api.intuit.com/v3/company"
+QBO_MINOR_VERSION = "75"
 TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 _refresh_lock = asyncio.Lock()
 
@@ -34,6 +36,20 @@ def _qbo_vendor_id(orbit_vendor_id: str) -> str:
     except (ValueError, json.JSONDecodeError) as exc:
         raise QBOError("QuickBooks vendor ID mapping is invalid") from exc
     return mapping.get(orbit_vendor_id, orbit_vendor_id)
+
+
+def _bank_fields_confirmed(vendor: dict, bank_details: dict) -> bool:
+    fields = vendor.get("VendorPaymentBankDetail")
+    if not isinstance(fields, dict):
+        return False
+    account_number = str(fields.get("BankAccountNumber") or "")
+    routing_code = re.sub(r"[\s-]", "", str(fields.get("BankBranchIdentifier") or ""))
+    return (
+        fields.get("BankAccountName") == bank_details["account_holder"]
+        and routing_code == re.sub(r"[\s-]", "", bank_details["routing_code"])
+        and len(account_number) >= 4
+        and account_number[-4:] == bank_details["account_number"][-4:]
+    )
 
 
 def _cipher() -> Fernet:
@@ -85,12 +101,13 @@ async def _access_token(client: httpx.AsyncClient, *, realm_id: str,
 async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
                                     client_secret: str, initial_refresh_token: str,
                                     vendor_id: str, bank_details: dict, store) -> dict:
-    """Sparse-update only QBO vendor bank fields in the fixed sandbox API.
+    """Update QBO vendor bank fields in the fixed sandbox API.
 
-    QBO's VendorPaymentBankDetail has no institution-name field. Orbit maps the
-    approved account holder to BankAccountName and the routing code to
-    BankBranchIdentifier; bank_name is retained in Orbit's approval record but
-    is not sent to QBO. QBO's SyncToken prevents overwriting a newer vendor row.
+    QBO's Vendor update operation is a full update. Preserve the current vendor
+    record and replace only the approved bank fields in the submitted object.
+    VendorPaymentBankDetail has no institution-name field, so bank_name remains
+    in Orbit's encrypted approval record. QBO's SyncToken prevents overwriting
+    a newer vendor row.
     """
     if not all((realm_id, client_id, client_secret, initial_refresh_token, vendor_id)):
         raise QBOError("QuickBooks sandbox OAuth configuration is incomplete")
@@ -104,7 +121,8 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
                 client_secret=client_secret, initial_refresh_token=initial_refresh_token,
                 store=store)
             headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-            current = await client.get(vendor_url, headers=headers)
+            current = await client.get(
+                vendor_url, params={"minorversion": QBO_MINOR_VERSION}, headers=headers)
             if current.status_code != 200:
                 raise QBOError(f"QuickBooks vendor read returned HTTP {current.status_code}")
             try:
@@ -113,18 +131,24 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
                 resolved_id = str(vendor["Id"])
             except (ValueError, KeyError, TypeError) as exc:
                 raise QBOError("QuickBooks vendor response was missing its version") from exc
-            body = {
+            body = dict(vendor)
+            routing_code = bank_details["routing_code"]
+            if re.fullmatch(r"\d{6}", routing_code):
+                routing_code = f"{routing_code[:3]}-{routing_code[3:]}"
+            body.update({
                 "Id": resolved_id,
                 "SyncToken": str(sync_token),
-                "sparse": True,
                 "VendorPaymentBankDetail": {
                     "BankAccountName": bank_details["account_holder"],
-                    "BankBranchIdentifier": bank_details["routing_code"],
+                    "BankBranchIdentifier": routing_code,
                     "BankAccountNumber": bank_details["account_number"],
+                    "StatementText": bank_details.get("statement_text", ""),
                 },
-            }
+            })
             updated = await client.post(
-                base, params={"operation": "update"}, headers=headers, json=body)
+                base,
+                params={"operation": "update", "minorversion": QBO_MINOR_VERSION},
+                headers=headers, json=body)
             if not 200 <= updated.status_code < 300:
                 raise QBOError(f"QuickBooks vendor update returned HTTP {updated.status_code}")
             try:
@@ -133,20 +157,19 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
                     raise QBOError("QuickBooks update response did not confirm the target vendor")
             except (ValueError, AttributeError) as exc:
                 raise QBOError("QuickBooks update response was invalid") from exc
-            verified = await client.get(vendor_url, headers=headers)
-            if verified.status_code != 200:
-                raise QBOError(f"QuickBooks vendor readback returned HTTP {verified.status_code}")
-            try:
-                persisted = verified.json()["Vendor"]["VendorPaymentBankDetail"]
-                expected = {
-                    "BankAccountName": bank_details["account_holder"],
-                    "BankBranchIdentifier": bank_details["routing_code"],
-                    "BankAccountNumber": bank_details["account_number"],
-                }
-                if any(persisted.get(key) != value for key, value in expected.items()):
-                    raise QBOError("QuickBooks did not confirm the approved vendor bank details")
-            except (ValueError, KeyError, TypeError) as exc:
-                raise QBOError("QuickBooks vendor readback omitted bank details") from exc
+            confirmed = _bank_fields_confirmed(response_vendor, bank_details)
+            if not confirmed:
+                verified = await client.get(
+                    vendor_url, params={"minorversion": QBO_MINOR_VERSION}, headers=headers)
+                if verified.status_code != 200:
+                    raise QBOError(f"QuickBooks vendor readback returned HTTP {verified.status_code}")
+                try:
+                    persisted = verified.json()["Vendor"]
+                except (ValueError, KeyError, TypeError) as exc:
+                    raise QBOError("QuickBooks vendor readback was invalid") from exc
+                confirmed = _bank_fields_confirmed(persisted, bank_details)
+            if not confirmed:
+                raise QBOError("QuickBooks did not confirm the approved vendor bank details")
             return {"status_code": updated.status_code,
                     "intuit_tid": updated.headers.get("intuit_tid")}
     except httpx.HTTPError as exc:
