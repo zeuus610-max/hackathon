@@ -1,26 +1,45 @@
-# CR-26-047 | Tier 1 problem statement
+# CRIMEATHON ’26 | Case CR-26-047
 
-**Team:** DEFENSE  
-**Finding:** A TallyBridge integration credential made 71 recorded vendor updates from 1–7 Sep. E18 and E19 match all 71 by request ID: 70 changed vendor email or phone; one changed a bank account. The bank change has no Finance approval reference in E19 and falls outside the sync’s stated purpose.
+## A vendor bank change without a verifiable approval trail
 
-**Problem chosen:** Can Harbor & Finch prove each integration-made bank change was authorized by Finance and within the integration’s approved scope?
+**Tier 1 / Problem statement / Draft for team review**<br>**Defense | Existing draft selection**
 
-## The one change that does not fit
+On 3 Sep, the TallyBridge LedgerOne key successfully changed Coastal Packaging’s bank details. The matching Finance change record has no approval reference. The evidence confirms the write; it does not establish who initiated it, whether it was authorized, or whether any payment was diverted.
 
-On 3 Sep at 01:44:30 UTC, E18 request `req-5f61b0de8` successfully PATCHed V-0412 bank details using `key-tb-07` from `10.20.4.77` with user-agent `TallyBridge-Sync/3.5.0`. E19 change `chg-8b9888c39b` matches the request ID, source and time; the masked account changed from `****4417` to `****9083`, and `approval_ref` is blank. E16 says the new 1 Sep sync updates vendor email and phone. The change is five days before the usual 8 Sep vendor payment run (case file); the records do not show whether V-0412 was due or whether any payment was diverted.
+### The record-level join
 
-## What could explain it
+**E18 | API request** — 03 Sep 2026 01:44:30 UTC; `req-5f61b0de8`; HTTP 200; `PATCH /v2/vendors/V-0412/bank-details`; `key-tb-07`; `10.20.4.77`.
 
-This request ran inside the 01:30 UTC nightly-sync window and alongside ordinary contact updates. E15 labels `10.20.4.77` as TallyBridge build host `tb-build-02` in earlier flows, so an integration route is plausible. But E15 ends 31 Aug and cannot verify the 3 Sep source or host owner. E20’s saved release notes describe contact-only sync, not bank changes; those public records are unverified. An approved exception missing from E19, a misconfigured sync, a compromised integration path, or incomplete approval logging remain possible. The evidence does not link the August operator to the September write.
+**E19 | Change record** — `chg-8b9888c39b`; API; `bank_account ****4417 → ****9083`; `approval_ref: blank`.
 
-## Separate August concern
+Same request ID, time, vendor, and source IP.
 
-E16 says unauthorized credential requests occurred on 11–12 Aug. E01 records successful LedgerOne vendor exports and payment searches under `key-tb-07` from IPs E17 lists as high-confidence unauthorized indicators. This supports concern that the activity reached beyond HelpDeskr tickets, but the logs do not show exported contents or identify the human operator. E02 also records HelpDeskr export jobs created, downloaded and deleted. Its timestamps are local with no offset, so do not assert minute-by-minute ordering across systems.
+**71** E18/E19 request-ID matches from Sep 1–7. **70** contact changes: 44 phone and 26 email. **1** bank-account change: a different field.
 
-## Control gap and defense approach
+### What the records support
 
-E04 is a 2 Sep snapshot, not history: `key-tb-07` is active, all-modules read/write, has no IP restriction or expiry, and was last reviewed 12 Jun 2024. E10 requires minimum scope, expiry within 90 days and IP restrictions where supported; E11 reports related open findings. E08 makes Harbor & Finch responsible for configuring restrictions. This control gap exists even if the 3 Sep change was approved.
+The same key and source read V-0412 (`req-15a052a5e`), its bank details (`req-93d66fcd5`), then `/v2/payments/scheduled` (`req-33a3928eca`) before the PATCH. The endpoint returned 14 records; the log does not show whether V-0412 was among them. No payment outcome is supplied.
 
-Build a scope-aware bank-change control: for every API change, join the request to the vendor record and Finance approval; compare the field changed with the integration’s allowed fields. Require approval before bank changes and hold mismatches for human review. Check key, source, client, scope, timing, amount changed and matching record. An unfamiliar-public-IP alert may catch the August indicators but would miss an internal private-link request and cannot prove Finance approval.
+E16/E20 announce email and phone contact sync from 1 Sep. The 70 matched contact changes fit that description; the `bank_account` change differs from the announced field list. E18 reports user-agent 3.5.0 although E20 lists release 3.6.0 on 1 Sep; the user-agent alone does not prove deployed code.
 
-**What would change the assessment:** the original Finance approval and payment records; LedgerOne key/scope/rotation history; and dated vendor build, tunnel and deployment logs for 3 Sep. A linked approval plus corroborated authorized job would support legitimacy; evidence of a changed payment would raise impact. Until then, the bank write is confirmed, authorization is unresolved, and diversion is unproven. E01/E18/E19 use UTC; E02 is local time with no offset.
+E04 shows `key-tb-07` with all-modules read/write, no IP restriction or expiry, and a last review in 2024. E10 requires least scope, expiry within 90 days and IP restriction where supported. E11 records relevant audit findings open in Sep 2025; the planned 2026 follow-up status is absent.
+
+### Limits and alternatives
+
+A blank `approval_ref` is not proof of no approval: E19 has three other bank changes with blank references, all through the UI. The 2024 onboarding request also includes vendors and payments (E07), so the evidence does not establish that this write violated the full original approval.
+
+The write occurred five days before the usual 8 Sep payment run, but no record shows whether V-0412 was included or paid. E15 labels `10.20.4.77` as `tb-build-02`, but the label is unverified and its flow log ends 31 Aug.
+
+August export activity in E01/E02 conflicts with E16’s metadata-only account; E02 also records a delete timeout. Public IPs are dynamic and the indicators are vendor-supplied. The exposed BlueVault key and post-exit Rohan sign-in are separate leads, with no evidence tying either to this bank change.
+
+Normal Tuesday support exports, the 31 Jul Finance bulk import (E19, `BULK-0731`), and the announced contact sync explain other activity, not this Sep 3 bank-field PATCH.
+
+### Problem selected | Defense
+
+Build a review checker that joins each integration bank change to its API request, compares the changed field with the documented sync purpose, and requires an independent Finance approval record. Missing or conflicting evidence goes to a human reviewer; the tool must not label a blank field as fraud.
+
+### Why not IP-only | What would change the view
+
+An unfamiliar-IP alert could flag the August public addresses but would miss a private-network write and would not test field scope or approval. A verified Finance request for V-0412, authoritative connector/host history, or the 8 Sep payment reconciliation could change this assessment.
+
+**Approach status:** Defense is the existing draft selection. Team agreement and Tier 1 submission status are unverified; confirm before treating the choice as final or locked. **Time basis:** E18/E19/E01/E03/E15 are UTC; E02 is tenant-local with no offset; E05 clock is unsynchronized.
