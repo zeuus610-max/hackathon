@@ -133,6 +133,20 @@ async def apply_vendor_bank_details(*, realm_id: str, client_id: str,
                     raise QBOError("QuickBooks update response did not confirm the target vendor")
             except (ValueError, AttributeError) as exc:
                 raise QBOError("QuickBooks update response was invalid") from exc
+            verified = await client.get(vendor_url, headers=headers)
+            if verified.status_code != 200:
+                raise QBOError(f"QuickBooks vendor readback returned HTTP {verified.status_code}")
+            try:
+                persisted = verified.json()["Vendor"]["VendorPaymentBankDetail"]
+                expected = {
+                    "BankAccountName": bank_details["account_holder"],
+                    "BankBranchIdentifier": bank_details["routing_code"],
+                    "BankAccountNumber": bank_details["account_number"],
+                }
+                if any(persisted.get(key) != value for key, value in expected.items()):
+                    raise QBOError("QuickBooks did not confirm the approved vendor bank details")
+            except (ValueError, KeyError, TypeError) as exc:
+                raise QBOError("QuickBooks vendor readback omitted bank details") from exc
             return {"status_code": updated.status_code,
                     "intuit_tid": updated.headers.get("intuit_tid")}
     except httpx.HTTPError as exc:
