@@ -13,8 +13,12 @@
     <script defer src="landing.js"></script>
   </head>
   <body>
-    <div class="backdrop" aria-hidden="true"></div>
-    <div class="wave-art" aria-hidden="true"><img src="assets/orbit-wave.jpg" alt=""></div>
+    <div class="hero-photo" aria-hidden="true">
+      <video class="hero-video" src="assets/orbit-wave.mp4" autoplay loop muted playsinline preload="auto" tabindex="-1">
+        <source src="assets/orbit-wave.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="grain" aria-hidden="true"></div>
     <header class="topbar">
       <a class="brand" href="#slide-1" aria-label="Orbit home">
         <svg class="brand-mark" viewBox="0 0 40 40" role="img" aria-label=""><circle class="mark-orbit" cx="20" cy="20" r="14"/><ellipse class="mark-ring" cx="20" cy="20" rx="19" ry="8" transform="rotate(-34 20 20)"/><circle class="mark-core" cx="20" cy="20" r="3.2"/><circle class="mark-satellite" cx="34.3" cy="10.7" r="2.4"/></svg>
