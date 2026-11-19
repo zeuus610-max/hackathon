@@ -14,22 +14,7 @@
   </head>
   <body>
     <div class="backdrop" aria-hidden="true"></div>
-    <div class="wave-art" aria-hidden="true">
-      <svg viewBox="0 0 1600 950" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="silver-wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7f7f7"/><stop offset=".38" stop-color="#bdbdbd"/><stop offset=".72" stop-color="#e6e6e6"/><stop offset="1" stop-color="#898989"/></linearGradient>
-          <filter id="wave-grain" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency=".013" numOctaves="3" seed="8" result="roughness"/>
-            <feDisplacementMap in="SourceGraphic" in2="roughness" scale="24" xChannelSelector="R" yChannelSelector="G" result="wave"/>
-            <feTurbulence type="fractalNoise" baseFrequency=".68" numOctaves="2" seed="17" result="fine-grain"/>
-            <feColorMatrix in="fine-grain" type="saturate" values="0" result="monochrome-grain"/>
-            <feComponentTransfer in="monochrome-grain" result="grain"><feFuncA type="table" tableValues="0 .5"/></feComponentTransfer>
-            <feBlend in="wave" in2="grain" mode="overlay"/>
-          </filter>
-        </defs>
-        <path d="M-100 90C160 24 335 102 512 230c168 121 279 254 469 303 180 47 324-12 472-98 119-68 210-60 297-1v350c-165 45-302 32-450-23-171-63-233-183-370-257-136-73-257-87-394-22-174 82-309 230-471 300-63 27-111 42-165 54Z" fill="url(#silver-wave)" filter="url(#wave-grain)"/>
-      </svg>
-    </div>
+    <div class="wave-art" aria-hidden="true"><img src="assets/orbit-wave.jpg" alt=""></div>
     <header class="topbar">
       <a class="brand" href="#slide-1" aria-label="Orbit home">
         <svg class="brand-mark" viewBox="0 0 40 40" role="img" aria-label=""><circle class="mark-orbit" cx="20" cy="20" r="14"/><ellipse class="mark-ring" cx="20" cy="20" rx="19" ry="8" transform="rotate(-34 20 20)"/><circle class="mark-core" cx="20" cy="20" r="3.2"/><circle class="mark-satellite" cx="34.3" cy="10.7" r="2.4"/></svg>
