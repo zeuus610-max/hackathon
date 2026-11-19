@@ -1,0 +1,38 @@
+name: Agent task
+description: Define an implementation or review task for one of the project agents
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What problem or project need does this task address?
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner agent
+      options:
+        - Codex Desktop
+        - Antigravity
+        - OpenCode
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable outcomes that complete the task.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: affected
+    attributes:
+      label: Affected areas and dependencies
+      description: Mention likely files, related issues, or work that must land first.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Decisions and notes
+      description: Keep cross-agent decisions and blockers here.
