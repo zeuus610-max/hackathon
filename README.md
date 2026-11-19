@@ -2,7 +2,7 @@
 
 Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, holds the request for independent Finance approval of the exact submitted details, then forwards the approved change to a configured finance API. It never forwards before approval and fails closed if its security configuration or provider is missing.
 
-The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The sample evidence identifies a LedgerOne-shaped endpoint, but no real ERP connector or secrets are configured in this checkout.
+The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The QBO sandbox connector is implemented, but it is not connected to an Intuit developer app or sandbox company in this checkout.
 
 ## Architecture
 
@@ -83,7 +83,17 @@ The workflow is:
 
 1. `POST /api/gate/vendor-changes` authenticates the caller and stores a request as `HELD` or `BLOCKED`. Bank details are encrypted at rest; audit events contain only a keyed fingerprint and last four characters.
 2. A separate active Finance approver can inspect a held request with `GET /api/gate/requests/{id}` and approve only by resubmitting the exact bank details with `confirm_exact_details: true`. Mismatches, self-approval, expired identities, or out-of-scope vendors are rejected.
-3. After approval, Orbit sends a `PATCH` to `{ORBIT_FINANCE_API_BASE_URL}/v2/vendors/{vendor_id}/bank-details` with a server-side `ORBIT_FINANCE_API_TOKEN` and an idempotency key. An unconfigured connector or uncertain upstream response remains `APPROVED_PENDING_PROVIDER`; Orbit does not report success.
+3. After approval, Orbit sends the request through the selected server-side connector. The default `generic` connector sends a `PATCH` to `{ORBIT_FINANCE_API_BASE_URL}/v2/vendors/{vendor_id}/bank-details`. Set `ORBIT_FINANCE_PROVIDER=qbo` to use the fixed Intuit QuickBooks Online **sandbox** API instead. The QBO adapter refreshes OAuth credentials, reads the vendor's current `SyncToken`, then makes a sparse vendor update containing the approved bank fields. It encrypts rotated refresh tokens in the Orbit database. QBO's vendor bank detail schema has no bank institution field, so the approved account holder maps to `BankAccountName`, routing code maps to `BankBranchIdentifier`, account number maps to `BankAccountNumber`, and `bank_name` remains only in Orbit's encrypted approval record. An unconfigured connector or uncertain upstream response remains `APPROVED_PENDING_PROVIDER`; Orbit does not report success.
+
+### QuickBooks Online sandbox setup
+
+1. Create an Intuit developer account and app, enable the Accounting API scope, and authorize it against a sandbox company. Intuit supplies sandbox companies and app credentials through its developer portal.
+2. Obtain the app's OAuth client ID, client secret, sandbox realm ID, and refresh token from the OAuth authorization flow. Do not use production credentials or a production realm ID; Orbit's QBO adapter is deliberately pinned to `https://sandbox-quickbooks.api.intuit.com`.
+3. Set `ORBIT_FINANCE_PROVIDER=qbo`, `ORBIT_QBO_REALM_ID`, `ORBIT_QBO_CLIENT_ID`, `ORBIT_QBO_CLIENT_SECRET`, and `ORBIT_QBO_REFRESH_TOKEN` in the deployment's secret manager. The Orbit encryption key must also be configured to protect rotated refresh tokens.
+4. Map each Orbit vendor ID to the corresponding QBO Vendor `Id` in the request caller's vendor scope. The adapter reads QBO's current `SyncToken` immediately before the sparse update, so a concurrent vendor edit causes QBO to reject the stale update rather than overwrite it.
+5. Test only with a sandbox vendor and dummy bank values. Intuit's sandbox demonstrates accounting API writes; it does not move funds. A production deployment also needs every vendor bank write routed through Orbit and direct QBO write access restricted, or callers can bypass the gate.
+
+The connector is not live until Intuit OAuth credentials and a sandbox realm ID are configured. No Intuit credentials or connected QBO company are included in this repository.
 
 Generate fresh secrets in the deployment secret manager. Example local key generation:
 
@@ -152,4 +162,4 @@ The tests cover expected scoring verdicts, missing twin-proof behavior, canary p
 
 ## Security limitations
 
-The request gate is implemented but is not connected to a real ERP in this environment: the finance product, API credentials, and upstream access controls have not been provided. It only protects changes routed through its endpoint; direct finance API access would bypass it. The frontend and historical evidence endpoints have no analyst login and must stay private until organization SSO/RBAC is connected. Supplied roster and credential state are historical case data, not live identity state. Scoring thresholds are not calibrated production detection performance. Never turn on the bank-change scope or route production traffic until the provider contract, identity source, key custody, direct-write lockout, database durability, and failure behavior have been verified in that provider's sandbox.
+The request gate and QBO sandbox adapter are implemented but not connected to an Intuit developer app or sandbox company: OAuth credentials and a sandbox realm ID have not been provided. The adapter is sandbox-pinned and must be exercised against a QBO sandbox before claiming a live connection. Orbit only protects changes routed through its endpoint; direct finance API access would bypass it. The frontend and historical evidence endpoints have no analyst login and must stay private until organization SSO/RBAC is connected. Supplied roster and credential state are historical case data, not live identity state. Scoring thresholds are not calibrated production detection performance. Never turn on the bank-change scope or route production traffic until the provider contract, identity source, key custody, direct-write lockout, database durability, and failure behavior have been verified in that provider's sandbox.
