@@ -117,3 +117,11 @@ class VendorBankChangeApproval(BaseModel):
 
     bank_details: BankDetails
     confirm_exact_details: bool
+
+
+class QBOUIConfirmation(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    account_last4: str = Field(pattern=r"^\d{4}$")
+    routing_code: str = Field(min_length=4, max_length=34, pattern=r"^[A-Za-z0-9 -]+$")
+    confirm_vendor_ui_saved: bool

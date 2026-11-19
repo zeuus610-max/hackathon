@@ -11,6 +11,7 @@ from .config import CASE_ID, COMPANY, EVIDENCE_DIR, TRACK
 from .engine import PRESETS, evaluate as evaluate_request
 from . import gate
 from .schemas import (ChecklistUpdate, EvaluationRequest, EvidenceHashRequest,
+                      QBOUIConfirmation,
                       EvidenceReferencesUpdate, ValidationUpdate,
                       VendorBankChangeApproval, VendorBankChangeRequest)
 from .store import utcnow
@@ -439,3 +440,10 @@ async def approve_vendor_bank_change(gate_request_id: str,
                                      payload: VendorBankChangeApproval,
                                      request: Request):
     return await gate.approve_change(gate_request_id, payload, request)
+
+
+@router.post("/gate/requests/{gate_request_id}/qbo-ui-confirmation")
+def confirm_qbo_vendor_ui_change(gate_request_id: str,
+                                 payload: QBOUIConfirmation,
+                                 request: Request):
+    return gate.confirm_qbo_ui_change(gate_request_id, payload, request)

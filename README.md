@@ -95,6 +95,8 @@ The workflow is:
 
 The local sandbox connection does not connect production books or move funds. No Intuit credentials are included in this repository. A synthetic test ACH value was saved directly in the QBO vendor form and reappeared masked after save, confirming the UI record persists. Orbit API requests passed maker and separate-approver checks, but QBO omitted `VendorPaymentBankDetail` from the update response and vendor readback. Orbit keeps those requests at `APPROVED_PENDING_PROVIDER`; the UI test does not confirm the Orbit API write. Do not use real bank details to work around sandbox validation.
 
+For this QBO readback limitation, an authorized Finance approver can reconcile a manually saved vendor record with `POST /api/gate/requests/{id}/qbo-ui-confirmation`. Submit the observed account last four, routing number, and `confirm_vendor_ui_saved: true`. Orbit compares those values with the encrypted approved request, requires the same vendor scope, records an append-only audit event, and sets `APPLIED_MANUAL` to distinguish UI confirmation from API-confirmed `APPLIED`. This is a Finance attestation; the endpoint does not inspect QBO itself.
+
 Generate fresh secrets in the deployment secret manager. Example local key generation:
 
 ```sh
@@ -140,6 +142,7 @@ Interactive documentation: `http://localhost:8000/docs`.
 - `POST /api/gate/vendor-changes` — authenticated, encrypted, fail-closed bank-change request.
 - `GET /api/gate/requests` and `GET /api/gate/requests/{id}` — Finance approval queue and protected review details.
 - `POST /api/gate/requests/{id}/approvals` — exact-detail Finance approval, followed by an upstream write only when configured.
+- `POST /api/gate/requests/{id}/qbo-ui-confirmation` — Finance attestation of a manually saved QBO vendor record when API readback omits bank fields.
 - `GET /api/topology` — systems, links, ranges, credential state, blind spots.
 - `GET /api/timeline?normalized=true|false&tolerance_s=900` — source records, UTC normalization, and E05 uncertainty.
 - `POST /api/engine/evaluate` — validated request payload and PASS, QUARANTINE, or CRITICAL_CANARY result.

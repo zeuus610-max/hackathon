@@ -21,7 +21,8 @@ import httpx
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException, Request
 
-from .schemas import BankDetails, VendorBankChangeApproval, VendorBankChangeRequest
+from .schemas import (BankDetails, QBOUIConfirmation, VendorBankChangeApproval,
+                      VendorBankChangeRequest)
 from .store import Store, utcnow
 
 
@@ -422,3 +423,59 @@ async def _approve_qbo_change(store: Store, approver: Principal, row: dict,
                  "upstream_status": result["status_code"], "intuit_tid": reference})
     return {"gate_request_id": gate_request_id, "status": "APPLIED",
             "upstream_status": result["status_code"], "upstream_reference": reference}
+
+
+def confirm_qbo_ui_change(gate_request_id: str, payload: QBOUIConfirmation,
+                          request: Request) -> dict:
+    """Record an independently authorized Finance check of a manual QBO UI write.
+
+    QBO's US sandbox API may omit Bill Pay bank details from both update and
+    read responses. This route records a Finance user's UI readback separately
+    from API-confirmed application; it never implies the API performed the write.
+    """
+    store: Store = request.app.state.store
+    confirmer = _authenticate(request, store)
+    _require_role(confirmer, "finance_approver")
+    if os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() != "qbo":
+        raise HTTPException(409, "Manual UI confirmation is only available for QBO")
+    row = store.one("SELECT * FROM gate_requests WHERE gate_request_id = ?",
+                    (gate_request_id,))
+    if not row or not _vendor_allowed(confirmer, row["vendor_id"]):
+        raise HTTPException(404, "Gate request not found")
+    if row["status"] != "APPROVED_PENDING_PROVIDER":
+        raise HTTPException(409, "Only an approved pending QBO request can be confirmed")
+    if row["requester"] == confirmer.principal or (
+            row["requester_employee"] and
+            row["requester_employee"] == confirmer.employee_username):
+        raise HTTPException(403, "The requester cannot confirm their own provider update")
+    if not payload.confirm_vendor_ui_saved:
+        raise HTTPException(422, "Finance must confirm the saved QBO vendor UI details")
+
+    details = _unsecret(row["bank_details_ciphertext"])
+    expected_routing = re.sub(r"[\s-]", "", details["routing_code"]).upper()
+    observed_routing = re.sub(r"[\s-]", "", payload.routing_code).upper()
+    if (payload.account_last4 != row["account_last4"] or
+            not hmac.compare_digest(expected_routing, observed_routing)):
+        store.audit(confirmer.principal, "vendor_bank_change.qbo_ui_confirmation_mismatch",
+                    gate_request_id, {"vendor_id": row["vendor_id"]})
+        raise HTTPException(409, "QBO UI readback does not match the approved request")
+
+    now = utcnow()
+    with store.lock:
+        current = store.conn.execute(
+            "SELECT status FROM gate_requests WHERE gate_request_id = ?",
+            (gate_request_id,),
+        ).fetchone()
+        if not current or current["status"] != "APPROVED_PENDING_PROVIDER":
+            raise HTTPException(409, "This request has already been reconciled")
+        store.conn.execute(
+            "UPDATE gate_requests SET status = 'APPLIED_MANUAL', upstream_reference = ?, updated_utc = ? WHERE gate_request_id = ?",
+            ("qbo-ui-readback", now, gate_request_id),
+        )
+        store.conn.commit()
+    store.audit(confirmer.principal, "vendor_bank_change.qbo_ui_confirmed",
+                gate_request_id, {"vendor_id": row["vendor_id"],
+                                  "account_last4": row["account_last4"],
+                                  "bank_fingerprint": row["bank_fingerprint"]})
+    return {"gate_request_id": gate_request_id, "status": "APPLIED_MANUAL",
+            "detail": "Finance confirmed the saved QBO vendor UI values; the QBO API write remains unconfirmed."}
