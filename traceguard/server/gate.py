@@ -171,14 +171,16 @@ def gate_status() -> dict:
     except HTTPException:
         configured = False
     if os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() == "qbo":
-        qbo_configured = all(os.getenv(key) for key in (
+        qbo_oauth_configured = all(os.getenv(key) for key in (
             "ORBIT_QBO_REALM_ID", "ORBIT_QBO_CLIENT_ID", "ORBIT_QBO_CLIENT_SECRET",
             "ORBIT_QBO_REFRESH_TOKEN"))
-        qbo_configured = qbo_configured and configured
         return {"configured": configured, "can_hold": configured,
-                "can_forward": configured and qbo_configured,
-                "upstream_configured": qbo_configured,
+                "can_forward": False,
+                "upstream_configured": False,
+                "oauth_configured": qbo_oauth_configured,
                 "provider": "quickbooks_online_sandbox",
+                "write_mode": "manual_qbo_ui",
+                "manual_confirmation_available": configured,
                 "enforcement": "deny unless active identity, vendor scope, and exact Finance approval pass"}
     raw_url = os.getenv("ORBIT_FINANCE_API_BASE_URL", "").rstrip("/")
     parsed = urlsplit(raw_url)
@@ -319,6 +321,8 @@ async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval
 
     approval_id = str(uuid.uuid4())
     now = utcnow()
+    qbo_provider = os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() == "qbo"
+    approved_status = "MANUAL_ACTION_REQUIRED" if qbo_provider else "APPROVED_PENDING_PROVIDER"
     with store.lock:
         latest = store.conn.execute("SELECT status FROM gate_requests WHERE gate_request_id = ?",
                                     (gate_request_id,)).fetchone()
@@ -335,12 +339,12 @@ async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval
             (approval_id, gate_request_id, approver.principal, candidate, now),
         )
         store.conn.execute(
-            "UPDATE gate_requests SET status = 'APPROVED_PENDING_PROVIDER', updated_utc = ? WHERE gate_request_id = ?",
-            (now, gate_request_id),
+            "UPDATE gate_requests SET status = ?, updated_utc = ? WHERE gate_request_id = ?",
+            (approved_status, now, gate_request_id),
         )
         store.conn.commit()
 
-    if os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() == "qbo":
+    if qbo_provider:
         return await _approve_qbo_change(store, approver, row, gate_request_id)
 
     try:
@@ -393,36 +397,12 @@ async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval
 
 async def _approve_qbo_change(store: Store, approver: Principal, row: dict,
                              gate_request_id: str) -> dict:
-    """Apply an approved change to the isolated QBO sandbox company."""
-    from .qbo import QBOError, apply_vendor_bank_details
-
-    try:
-        result = await apply_vendor_bank_details(
-            realm_id=os.environ["ORBIT_QBO_REALM_ID"],
-            client_id=os.environ["ORBIT_QBO_CLIENT_ID"],
-            client_secret=os.environ["ORBIT_QBO_CLIENT_SECRET"],
-            initial_refresh_token=os.environ["ORBIT_QBO_REFRESH_TOKEN"],
-            vendor_id=row["vendor_id"],
-            bank_details=_unsecret(row["bank_details_ciphertext"]),
-            store=store,
-        )
-    except (KeyError, QBOError) as exc:
-        store.audit(approver.principal, "vendor_bank_change.qbo_error", gate_request_id,
-                    {"vendor_id": row["vendor_id"], "error": str(exc)[:180]})
-        return {"gate_request_id": gate_request_id,
-                "status": "APPROVED_PENDING_PROVIDER",
-                "detail": "QuickBooks did not confirm the sandbox update. No success is reported."}
-
-    reference = result.get("intuit_tid")
-    store.write(
-        "UPDATE gate_requests SET status = 'APPLIED', upstream_status = ?, upstream_reference = ?, updated_utc = ? WHERE gate_request_id = ?",
-        (result["status_code"], str(reference)[:120] if reference else None,
-         utcnow(), gate_request_id))
-    store.audit(approver.principal, "vendor_bank_change.qbo_applied", gate_request_id,
+    """Hold QBO requests for UI completion; Vendor API does not update Bill Pay ACH."""
+    store.audit(approver.principal, "vendor_bank_change.qbo_ui_required", gate_request_id,
                 {"vendor_id": row["vendor_id"], "bank_fingerprint": row["bank_fingerprint"],
-                 "upstream_status": result["status_code"], "intuit_tid": reference})
-    return {"gate_request_id": gate_request_id, "status": "APPLIED",
-            "upstream_status": result["status_code"], "upstream_reference": reference}
+                 "reason": "vendor_api_did_not_persist_bill_pay_ach_in_sandbox"})
+    return {"gate_request_id": gate_request_id, "status": "MANUAL_ACTION_REQUIRED",
+            "detail": "Save the approved details in the QBO vendor Bill Pay ACH section, then confirm its masked account suffix and routing number through the QBO UI confirmation endpoint."}
 
 
 def confirm_qbo_ui_change(gate_request_id: str, payload: QBOUIConfirmation,
@@ -442,7 +422,7 @@ def confirm_qbo_ui_change(gate_request_id: str, payload: QBOUIConfirmation,
                     (gate_request_id,))
     if not row or not _vendor_allowed(confirmer, row["vendor_id"]):
         raise HTTPException(404, "Gate request not found")
-    if row["status"] != "APPROVED_PENDING_PROVIDER":
+    if row["status"] not in {"APPROVED_PENDING_PROVIDER", "MANUAL_ACTION_REQUIRED"}:
         raise HTTPException(409, "Only an approved pending QBO request can be confirmed")
     if row["requester"] == confirmer.principal or (
             row["requester_employee"] and
@@ -466,7 +446,8 @@ def confirm_qbo_ui_change(gate_request_id: str, payload: QBOUIConfirmation,
             "SELECT status FROM gate_requests WHERE gate_request_id = ?",
             (gate_request_id,),
         ).fetchone()
-        if not current or current["status"] != "APPROVED_PENDING_PROVIDER":
+        if not current or current["status"] not in {
+                "APPROVED_PENDING_PROVIDER", "MANUAL_ACTION_REQUIRED"}:
             raise HTTPException(409, "This request has already been reconciled")
         store.conn.execute(
             "UPDATE gate_requests SET status = 'APPLIED_MANUAL', upstream_reference = ?, updated_utc = ? WHERE gate_request_id = ?",

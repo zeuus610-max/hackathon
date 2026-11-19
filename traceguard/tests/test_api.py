@@ -7,7 +7,7 @@ from cryptography.fernet import Fernet
 import pytest
 from fastapi.testclient import TestClient
 
-from traceguard.server import gate, main, qbo
+from traceguard.server import gate, main
 
 
 @pytest.fixture
@@ -225,7 +225,7 @@ def test_finance_provider_error_is_not_reported_as_applied(client, monkeypatch):
     assert result["detail"] == "Finance system rejected the update. No success is reported."
 
 
-def test_qbo_adapter_refreshes_oauth_and_verifies_full_vendor_update(client, monkeypatch):
+def test_qbo_approved_change_requires_manual_ui_confirmation(client, monkeypatch):
     _enable_gate(monkeypatch, [
         _gate_credential("maker-secret", "finance-maker-1", "finance_maker",
                          employee_username="n.ansari", scopes=["vendor:bank-change"],
@@ -234,42 +234,6 @@ def test_qbo_adapter_refreshes_oauth_and_verifies_full_vendor_update(client, mon
                          employee_username="a.desai", vendor_ids=["41"]),
     ])
     monkeypatch.setenv("ORBIT_FINANCE_PROVIDER", "qbo")
-    monkeypatch.setenv("ORBIT_QBO_REALM_ID", "sandbox-realm")
-    monkeypatch.setenv("ORBIT_QBO_CLIENT_ID", "qbo-client-id")
-    monkeypatch.setenv("ORBIT_QBO_CLIENT_SECRET", "qbo-client-secret")
-    monkeypatch.setenv("ORBIT_QBO_REFRESH_TOKEN", "initial-refresh-token")
-    calls = []
-
-    class Response:
-        def __init__(self, status, body, headers=None):
-            self.status_code, self.body, self.headers = status, body, headers or {}
-        def json(self): return self.body
-
-    class QBOClient:
-        def __init__(self, **kwargs): pass
-        async def __aenter__(self): return self
-        async def __aexit__(self, *args): return None
-        async def post(self, url, **kwargs):
-            calls.append(("POST", url, kwargs))
-            if url == "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer":
-                return Response(200, {"access_token": "sandbox-access",
-                                      "refresh_token": "rotated-refresh"})
-            return Response(200, {"Vendor": {"Id": "41", "SyncToken": "8"}},
-                            {"intuit_tid": "qbo-tid-41"})
-        async def get(self, url, **kwargs):
-            calls.append(("GET", url, kwargs))
-            if len([call for call in calls if call[0] == "GET"]) == 1:
-                return Response(200, {"Vendor": {"Id": "41", "SyncToken": "7"}})
-            return Response(200, {"Vendor": {
-                "Id": "41", "SyncToken": "9",
-                "VendorPaymentBankDetail": {
-                    "BankAccountName": "Coastal Packaging Ltd",
-                    "BankBranchIdentifier": "ABCD1234567",
-                    "BankAccountNumber": "123456789083",
-                },
-            }})
-
-    monkeypatch.setattr(gate.httpx, "AsyncClient", QBOClient)
     body = _bank_change() | {"vendor_id": "41"}
     held = client.post("/api/gate/vendor-changes", headers={
         "Authorization": "Bearer maker-secret"}, json=body).json()
@@ -278,22 +242,46 @@ def test_qbo_adapter_refreshes_oauth_and_verifies_full_vendor_update(client, mon
                          json={"bank_details": body["bank_details"],
                                "confirm_exact_details": True}).json()
 
-    assert result["status"] == "APPLIED"
-    assert result["upstream_reference"] == "qbo-tid-41"
-    assert calls[1][0:2] == ("GET", "https://sandbox-quickbooks.api.intuit.com/v3/company/sandbox-realm/vendor/41")
-    assert calls[2][0:2] == ("POST", "https://sandbox-quickbooks.api.intuit.com/v3/company/sandbox-realm/vendor")
-    assert calls[2][2]["params"] == {"operation": "update", "minorversion": "75"}
-    assert calls[2][2]["json"] == {
-        "Id": "41", "SyncToken": "7",
-        "VendorPaymentBankDetail": {
-            "BankAccountName": "Coastal Packaging Ltd",
-            "BankBranchIdentifier": "ABCD1234567",
-            "BankAccountNumber": "123456789083",
-        },
-    }
-    saved_token = client.app.state.store.get_meta("qbo_refresh_token:sandbox-realm")
-    assert saved_token != "rotated-refresh"
-    assert qbo._cipher().decrypt(saved_token.encode()).decode() == "rotated-refresh"
+    assert result["status"] == "MANUAL_ACTION_REQUIRED"
+    assert "save the approved details in the qbo vendor" in result["detail"].casefold()
+    assert result.get("upstream_status") is None
+
+
+def test_qbo_manual_confirmation_matches_approved_values_and_audits(client, monkeypatch):
+    _enable_gate(monkeypatch, [
+        _gate_credential("maker-secret", "finance-maker-1", "finance_maker",
+                         employee_username="n.ansari", scopes=["vendor:bank-change"],
+                         vendor_ids=["41"]),
+        _gate_credential("approver-secret", "finance-approver-1", "finance_approver",
+                         employee_username="a.desai", vendor_ids=["41"]),
+    ])
+    monkeypatch.setenv("ORBIT_FINANCE_PROVIDER", "qbo")
+    body = _bank_change() | {"vendor_id": "41"}
+    held = client.post("/api/gate/vendor-changes", headers={
+        "Authorization": "Bearer maker-secret"}, json=body).json()
+    approved = client.post(f"/api/gate/requests/{held['gate_request_id']}/approvals",
+                           headers={"Authorization": "Bearer approver-secret"},
+                           json={"bank_details": body["bank_details"],
+                                 "confirm_exact_details": True}).json()
+    assert approved["status"] == "MANUAL_ACTION_REQUIRED"
+
+    endpoint = f"/api/gate/requests/{held['gate_request_id']}/qbo-ui-confirmation"
+    mismatch = client.post(endpoint, headers={
+        "Authorization": "Bearer approver-secret"}, json={
+            "account_last4": "0000", "routing_code": "ABCD1234567",
+            "confirm_vendor_ui_saved": True})
+    assert mismatch.status_code == 409
+
+    confirmed = client.post(endpoint, headers={
+        "Authorization": "Bearer approver-secret"}, json={
+            "account_last4": "9083", "routing_code": "ABCD1234567",
+            "confirm_vendor_ui_saved": True})
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "APPLIED_MANUAL"
+    record = client.get(f"/api/gate/requests/{held['gate_request_id']}", headers={
+        "Authorization": "Bearer approver-secret"}).json()
+    assert record["status"] == "APPLIED_MANUAL"
+    assert client.get("/api/audit").json()["verification"]["intact"] is True
 
 
 def test_qbo_provider_is_not_forward_enabled_without_oauth_config(client, monkeypatch):
@@ -308,6 +296,9 @@ def test_qbo_provider_is_not_forward_enabled_without_oauth_config(client, monkey
     assert status["provider"] == "quickbooks_online_sandbox"
     assert status["can_hold"] is True
     assert status["can_forward"] is False
+    assert status["upstream_configured"] is False
+    assert status["oauth_configured"] is False
+    assert status["write_mode"] == "manual_qbo_ui"
 
 
 def test_terminated_rohan_cannot_review_a_held_request(client, monkeypatch):

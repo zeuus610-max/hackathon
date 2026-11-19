@@ -1,8 +1,8 @@
 # Orbit — CR-26-047 Vendor Change Gate
 
-Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, holds the request for independent Finance approval of the exact submitted details, then forwards the approved change to a configured finance API. It never forwards before approval and fails closed if its security configuration or provider is missing.
+Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, and holds the request for independent Finance approval of the exact submitted details. It forwards only through a configured provider write path; QBO sandbox bank changes require a manual UI save and an audited Finance confirmation because the Vendor API did not persist the Bill Pay ACH fields in controlled sandbox checks.
 
-The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. This workspace has a local-only connection to an Intuit QuickBooks Online sandbox; credentials are kept in ignored, permission-restricted local configuration and are not part of this repository.
+The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The local workspace has been used with an Intuit QuickBooks Online sandbox; production books are not connected.
 
 ## Architecture
 
@@ -42,7 +42,7 @@ The existing Orbit overview is at `http://localhost:8000/`; the read-only case r
 
 ## Request-time bank-change gate
 
-The gate is disabled by default. `GET /api/gate/status` reports whether gate secrets and an upstream finance connector are present. Without the required gate keys, a bank-change request is rejected with `503`; no request is treated as safe by default.
+The gate is disabled by default. `GET /api/gate/status` reports whether gate secrets and the selected provider mode are configured. For QBO, it reports `can_forward: false`, `upstream_configured: false`, and `write_mode: "manual_qbo_ui"`; OAuth configuration, if present, does not enable an API write. Without the required gate keys, a bank-change request is rejected with `503`; no request is treated as safe by default.
 
 Before enabling it, configure `ORBIT_GATE_CREDENTIALS_JSON`, `ORBIT_DATA_ENCRYPTION_KEY`, and `ORBIT_BANK_FIELD_HMAC_KEY` in the backend environment. Use token hashes in the JSON; raw caller tokens are held by the calling service and never stored by Orbit. A credential entry has this shape:
 
@@ -83,19 +83,19 @@ The workflow is:
 
 1. `POST /api/gate/vendor-changes` authenticates the caller and stores a request as `HELD` or `BLOCKED`. Bank details are encrypted at rest; audit events contain only a keyed fingerprint and last four characters.
 2. A separate active Finance approver can inspect a held request with `GET /api/gate/requests/{id}` and approve only by resubmitting the exact bank details with `confirm_exact_details: true`. Mismatches, self-approval, expired identities, or out-of-scope vendors are rejected.
-3. After approval, Orbit sends the request through the selected server-side connector. The default `generic` connector sends a `PATCH` to `{ORBIT_FINANCE_API_BASE_URL}/v2/vendors/{vendor_id}/bank-details`. Set `ORBIT_FINANCE_PROVIDER=qbo` to use the fixed Intuit QuickBooks Online **sandbox** API instead. The QBO adapter refreshes OAuth credentials, reads the vendor's current `SyncToken`, then makes a full vendor update preserving existing fields and replacing only the approved bank fields. It encrypts rotated refresh tokens in the Orbit database. QBO's vendor bank detail schema has no bank institution field, so the approved account holder maps to `BankAccountName`, routing code maps to `BankBranchIdentifier`, account number maps to `BankAccountNumber`, and `bank_name` remains only in Orbit's encrypted approval record. An unconfigured connector or uncertain upstream response remains `APPROVED_PENDING_PROVIDER`; Orbit does not report success.
+3. After approval, the default `generic` connector sends a `PATCH` to `{ORBIT_FINANCE_API_BASE_URL}/v2/vendors/{vendor_id}/bank-details`. For QBO, set `ORBIT_FINANCE_PROVIDER=qbo`. Orbit records the request as `MANUAL_ACTION_REQUIRED` and does not send a Vendor API write, because a controlled test against a blank QBO US sandbox vendor showed the API incremented `SyncToken` but did not populate the Bill Pay ACH fields visible in the vendor UI. A Finance approver must save the already-approved details in QBO, then confirm the masked suffix and routing number through Orbit's QBO UI confirmation endpoint. Orbit records that separate attestation as `APPLIED_MANUAL`, never as API-confirmed `APPLIED`.
 
-### QuickBooks Online sandbox setup
+### QuickBooks Online sandbox workflow
 
-1. Create an Intuit developer account and app, enable the Accounting API scope, and authorize it against a sandbox company. Intuit supplies sandbox companies and app credentials through its developer portal.
-2. Obtain the app's OAuth client ID, client secret, sandbox realm ID, and refresh token from the OAuth authorization flow. Do not use production credentials or a production realm ID; Orbit's QBO adapter is deliberately pinned to `https://sandbox-quickbooks.api.intuit.com`.
-3. Set `ORBIT_FINANCE_PROVIDER=qbo`, `ORBIT_QBO_REALM_ID`, `ORBIT_QBO_CLIENT_ID`, `ORBIT_QBO_CLIENT_SECRET`, and `ORBIT_QBO_REFRESH_TOKEN` in the deployment's secret manager. The Orbit encryption key must also be configured to protect rotated refresh tokens.
-4. Map each Orbit vendor ID to the corresponding QBO Vendor `Id` with `ORBIT_QBO_VENDOR_ID_MAP_JSON`, for example `{"V-0412":"58"}`. Keep authorization scopes on the Orbit vendor ID (`V-0412`); the connector resolves it to QBO's ID only after approval. It pins QBO minor version 75, reads the current Vendor and `SyncToken`, preserves the vendor's existing fields in the full update, then verifies the update response and, if needed, reads the vendor back. Because QBO may mask account numbers or omit bank fields from later reads, it confirms the account suffix with the account holder and routing fields before reporting `APPLIED`; otherwise the request remains pending.
-5. Test only with a sandbox vendor and dummy bank values. Intuit's sandbox demonstrates accounting API writes; it does not move funds. A production deployment also needs every vendor bank write routed through Orbit and direct QBO write access restricted, or callers can bypass the gate.
+1. Create or select a QBO sandbox company. Do not use production credentials or a production realm ID.
+2. Set `ORBIT_FINANCE_PROVIDER=qbo`. The manual workflow does not require Intuit OAuth credentials or a Vendor ID map; keep vendor-scope authorization on Orbit's vendor ID.
+3. After an independent Finance approval, the request becomes `MANUAL_ACTION_REQUIRED`. The approver signs in to QBO, opens the matching vendor, and saves the approved bank details in the Bill Pay ACH section.
+4. An active Finance approver other than the request maker confirms the UI's account suffix and routing number through Orbit. Orbit sets `APPLIED_MANUAL` after matching those values against the encrypted approval. This confirmation is an attestation; the endpoint does not inspect QBO.
+5. Use only sandbox vendors and dummy bank values. The sandbox does not move funds. A production deployment also needs every vendor bank write routed through Orbit and direct QBO write access restricted, or callers can bypass the gate.
 
-The local sandbox connection does not connect production books or move funds. No Intuit credentials are included in this repository. A synthetic test ACH value was saved directly in the QBO vendor form and reappeared masked after save, confirming the UI record persists. Orbit API requests passed maker and separate-approver checks, but QBO omitted `VendorPaymentBankDetail` from the update response and vendor readback. Orbit keeps those requests at `APPROVED_PENDING_PROVIDER`; the UI test does not confirm the Orbit API write. Do not use real bank details to work around sandbox validation.
+No Intuit credentials are included in this repository. A synthetic test ACH value was saved directly in the QBO vendor form and reappeared masked after save. A clean vendor test then showed that both full and sparse Orbit Vendor API updates returned HTTP 200 without populating Bill Pay ACH in the QBO UI; the sparse attempt did not advance `SyncToken`. Orbit now requires the manual UI step rather than reporting a successful API write. Do not use real bank details to work around sandbox validation.
 
-For this QBO readback limitation, an authorized Finance approver can reconcile a manually saved vendor record with `POST /api/gate/requests/{id}/qbo-ui-confirmation`. Submit the observed account last four, routing number, and `confirm_vendor_ui_saved: true`. Orbit compares those values with the encrypted approved request, requires the same vendor scope, records an append-only audit event, and sets `APPLIED_MANUAL` to distinguish UI confirmation from API-confirmed `APPLIED`. This is a Finance attestation; the endpoint does not inspect QBO itself.
+For this QBO API limitation, a different authorized Finance approver can reconcile the manually saved vendor record with `POST /api/gate/requests/{id}/qbo-ui-confirmation`. Submit the observed account last four, routing number, and `confirm_vendor_ui_saved: true`. Orbit compares those values with the encrypted approved request, requires the same vendor scope, records an append-only audit event, and sets `APPLIED_MANUAL` to distinguish UI confirmation from API-confirmed `APPLIED`.
 
 Generate fresh secrets in the deployment secret manager. Example local key generation:
 
@@ -138,11 +138,11 @@ Run `traceguard/supabase/schema.sql` in the Supabase SQL editor first. The backe
 Interactive documentation: `http://localhost:8000/docs`.
 
 - `GET /api/health` — API time, last evidence ingest, database provider and connectivity.
-- `GET /api/gate/status` — gate configuration status without returning secrets.
+- `GET /api/gate/status` — gate and provider-mode status without returning secrets.
 - `POST /api/gate/vendor-changes` — authenticated, encrypted, fail-closed bank-change request.
 - `GET /api/gate/requests` and `GET /api/gate/requests/{id}` — Finance approval queue and protected review details.
-- `POST /api/gate/requests/{id}/approvals` — exact-detail Finance approval, followed by an upstream write only when configured.
-- `POST /api/gate/requests/{id}/qbo-ui-confirmation` — Finance attestation of a manually saved QBO vendor record when API readback omits bank fields.
+- `POST /api/gate/requests/{id}/approvals` — exact-detail Finance approval; QBO requests transition to `MANUAL_ACTION_REQUIRED`.
+- `POST /api/gate/requests/{id}/qbo-ui-confirmation` — independent Finance confirmation of a manually saved QBO vendor record.
 - `GET /api/topology` — systems, links, ranges, credential state, blind spots.
 - `GET /api/timeline?normalized=true|false&tolerance_s=900` — source records, UTC normalization, and E05 uncertainty.
 - `POST /api/engine/evaluate` — validated request payload and PASS, QUARANTINE, or CRITICAL_CANARY result.
