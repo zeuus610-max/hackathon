@@ -80,12 +80,11 @@ export default function App() {
 
   return <div className="app">
     <header className="topbar">
-      <a className="brand" href="/" aria-label="Orbit overview"><img src="/assets/orbit-mascot.svg" alt=""/><span>orbit<span className="brand-dot">.</span></span></a>
-      <div className="case-label"><b>CR-26-047</b><span>HARBOR &amp; FINCH FREIGHT PVT. LTD.</span><small>ZERO-TRUST NON-HUMAN DEFENSE</small></div>
+      <div className="nav-brand-group"><a className="brand" href="/" aria-label="Orbit overview"><img src="/assets/orbit-mascot.svg" alt=""/><span>orbit<span className="brand-dot">.</span></span></a><div className="case-label"><b>CR-26-047</b><span>HARBOR &amp; FINCH FREIGHT</span></div></div>
+      <nav className="section-nav" aria-label="Defense console sections">{NAV.map((item, index) => <button key={item} className={section === index ? "active" : ""} onClick={() => setSection(index)}><small>0{index + 1}</small>{item}</button>)}</nav>
       <div className="system-status"><StatePill tone={health?.status === "ok" ? "green" : "amber"}>API {health?.status === "ok" ? "ONLINE" : "CHECK"}</StatePill><StatePill tone={health?.database_connected ? "green" : "amber"}>{health?.database_provider || "DATABASE"}</StatePill><span className="utc-clock"><Clock3 size={14}/>{now.toISOString().replace("T", " ").slice(0, 19)} UTC</span></div>
     </header>
     <div className="subhead"><div><span className="live-dot"/> DEFENSE CONSOLE <span className="subdivider">/</span> EVIDENCE-LED OPERATIONS</div><span>LAST SYNC {health?.last_sync_utc || "—"}</span></div>
-    <nav className="section-nav" aria-label="Defense console sections">{NAV.map((item, index) => <button key={item} className={section === index ? "active" : ""} onClick={() => setSection(index)}><small>0{index + 1}</small>{item}<ChevronRight size={14}/></button>)}</nav>
     {error && <div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={refresh}>Retry</button></div>}
     <main className="workspace"><AnimatePresence mode="wait"><motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: .2 }}>
       {section === 0 && <TopologyView topology={topology} eventCount={timeline.length} selected={selectedCredential} onSelect={setSelectedCredential} />}
