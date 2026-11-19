@@ -1,63 +1,66 @@
-const menuButton = document.querySelector("#menu-toggle");
-const mainNav = document.querySelector(".main-nav");
+(() => {
+  const slides = [...document.querySelectorAll(".slide")];
+  const navItems = [...document.querySelectorAll(".nav-item")];
+  const currentLabel = document.querySelector("#slide-current");
+  const progress = document.querySelector("#progress-fill");
+  const previous = document.querySelector("#prev-slide");
+  const next = document.querySelector("#next-slide");
+  let current = 0;
 
-menuButton.addEventListener("click", () => {
-  const open = menuButton.getAttribute("aria-expanded") !== "true";
-  menuButton.setAttribute("aria-expanded", String(open));
-  menuButton.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
-  mainNav.classList.toggle("open", open);
-});
-
-mainNav.querySelectorAll("a").forEach((link) => {
-  link.addEventListener("click", () => {
-    mainNav.classList.remove("open");
-    menuButton.setAttribute("aria-expanded", "false");
-    menuButton.setAttribute("aria-label", "Open navigation");
-  });
-});
-
-const flowCopy = {
-  identity: {
-    title: "IDENTITY + CREDENTIAL",
-    description: "Check active status, key ownership, expiry and restrictions. The case shows a broad TallyBridge key and a post-termination account sign-in.",
-  },
-  permission: {
-    title: "PERMISSION · THIS VENDOR",
-    description: "Check object-level access to this vendor and this field. A contact-sync integration should not write bank details.",
-  },
-  approval: {
-    title: "FINANCE APPROVAL · EXACT DETAILS",
-    description: "Match approval to vendor V-0412 and the exact new bank details. E19 has no approval reference for this change.",
-  },
-  risk: {
-    title: "RISK CONTEXT · REVIEW SIGNALS",
-    description: "Check exports, source host, client version and related access. BlueVault timing remains uncertain because its clock was unsynchronized.",
-  },
-};
-
-document.querySelectorAll(".flow-node").forEach((node) => {
-  node.addEventListener("click", () => {
-    document.querySelectorAll(".flow-node").forEach((item) => {
-      const active = item === node;
-      item.classList.toggle("selected", active);
-      item.setAttribute("aria-pressed", String(active));
+  function showSlide(index) {
+    current = (index + slides.length) % slides.length;
+    slides.forEach((slide, i) => {
+      const active = i === current;
+      slide.classList.toggle("is-current", active);
+      slide.setAttribute("aria-hidden", String(!active));
     });
-    const copy = flowCopy[node.dataset.node];
-    document.querySelector("#selected-source").textContent = copy.title;
-    document.querySelector("#node-description").textContent = copy.description;
-  });
-});
+    navItems.forEach((item, i) => {
+      const active = i === current;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-current", active ? "step" : "false");
+    });
+    currentLabel.textContent = String(current + 1).padStart(2, "0");
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    history.replaceState(null, "", `#slide-${current + 1}`);
+  }
 
-fetch("/api/case", { headers: { Accept: "application/json" } })
-  .then((response) => {
-    if (!response.ok) throw new Error(`Case API returned ${response.status}`);
-    return response.json();
-  })
-  .then((summary) => {
-    document.querySelector(".architecture-live").innerHTML = "<i></i> CASE DATA CONNECTED";
-    const count = document.querySelector(".proof-strip p");
-    count.setAttribute("aria-label", `${summary.evidence_total} case artifacts; ${summary.evidence_loaded} event and reference streams loaded`);
-  })
-  .catch(() => {
-    document.querySelector(".architecture-live").innerHTML = "<i></i> CASE EXAMPLE";
+  navItems.forEach((item) => item.addEventListener("click", () => showSlide(Number(item.dataset.go))));
+  document.querySelectorAll("[data-go]").forEach((button) => {
+    if (!button.classList.contains("nav-item")) {
+      button.addEventListener("click", () => showSlide(Number(button.dataset.go)));
+    }
   });
+  previous.addEventListener("click", () => showSlide(current - 1));
+  next.addEventListener("click", () => showSlide(current + 1));
+  document.addEventListener("keydown", (event) => {
+    if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      showSlide(current + 1);
+    } else if (["ArrowLeft", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      showSlide(current - 1);
+    } else if (event.key === "Home") {
+      showSlide(0);
+    } else if (event.key === "End") {
+      showSlide(slides.length - 1);
+    }
+  });
+
+  const initial = Number(location.hash.match(/slide-(\d)/)?.[1]);
+  showSlide(Number.isInteger(initial) && initial > 0 ? initial - 1 : 0);
+
+  const evaluate = document.querySelector("#evaluate-request");
+  const result = document.querySelector(".gate-result");
+  evaluate.addEventListener("click", () => {
+    result.classList.add("is-blocked");
+    document.querySelector("#decision-chip").textContent = "HOLD";
+    document.querySelector("#decision-symbol").textContent = "!";
+    document.querySelector("#decision-title").textContent = "Change held for Finance";
+    document.querySelector("#decision-copy").textContent = "The bank update is stopped before commit because permission and matching approval checks fail.";
+    document.querySelector("#decision-action-label").textContent = "REQUEST-TIME DECISION";
+    document.querySelector("#decision-action").textContent = "Hold write · Alert Finance · Preserve evidence";
+    evaluate.innerHTML = "Request held safely <span aria-hidden=\"true\">✓</span>";
+    evaluate.disabled = true;
+    evaluate.setAttribute("aria-label", "Simulation complete. The request is held.");
+  });
+})();
