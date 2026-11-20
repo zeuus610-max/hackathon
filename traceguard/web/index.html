@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080b11">
+    <meta name="description" content="Orbit prevents unauthorized vendor bank changes with identity checks and independent Finance approval before any write reaches your finance system.">
+    <title>Orbit — Vendor payment protection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="landing.css">
+    <script defer src="landing.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Orbit home"><img src="assets/orbit-mascot.svg" alt=""><span>orbit<span class="brand-dot">.</span></span></a>
+      <nav aria-label="Main navigation"><a href="#protection">Protection</a><a href="#workflow">How it works</a><a href="#provider">Provider</a></nav>
+      <a class="header-cta" href="/console/">Open Orbit <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="hero">
+        <video class="hero-background-video" autoplay muted loop playsinline preload="metadata" disablepictureinpicture tabindex="-1" aria-hidden="true">
+          <source src="assets/orbit-hero.mp4" type="video/mp4">
+        </video>
+        <div class="hero-copy">
+          <div class="eyebrow"><i></i> REQUEST-TIME PAYMENT PROTECTION</div>
+          <h1>Stop unauthorized vendor bank changes <em>before payment.</em></h1>
+          <p>Orbit puts an approval gate in the finance write path. Every bank change is checked against the caller, vendor scope, and exact Finance approval before it reaches your books.</p>
+          <div class="hero-actions"><a class="primary" href="/console/">Open protection console <span>→</span></a><a class="quiet-link" href="#workflow">See the controls</a></div>
+          <div class="live-status"><i id="service-dot"></i><span id="service-state">Checking protection status…</span></div>
+        </div>
+      </section>
+      <section id="protection" class="protection">
+        <div class="section-label">BUILT AROUND THE CHANGE THAT CAN DIVERT A PAYMENT</div>
+        <h2>Each write has to earn its way through.</h2>
+        <div class="protection-grid">
+          <article><b>01</b><h3>Verify the caller</h3><p>Authenticate the service or Finance user. Check current status, role, and credential scope on every request.</p></article>
+          <article><b>02</b><h3>Restrict the vendor</h3><p>Authorize each identity for specific vendors and actions. Broad sync access cannot change bank details.</p></article>
+          <article><b>03</b><h3>Require a second person</h3><p>A separate Finance approver reviews the precise bank details submitted by the requester.</p></article>
+          <article><b>04</b><h3>Forward only the approved values</h3><p>Encrypt held details, compare the approval against the request, and write only after an exact match.</p></article>
+        </div>
+      </section>
+      <section id="workflow" class="workflow">
+        <div><div class="section-label">ONE CONTROLLED PATH</div><h2>Hold. Verify. Apply.</h2><p>Unverified requests remain held or blocked. An approval cannot change the submitted values, and the requester cannot approve their own change.</p></div>
+        <div class="flow-list"><div><span>01</span><b>Request reaches Orbit</b><small>Caller identity, vendor, scope, and request context are checked.</small></div><div><span>02</span><b>Finance verifies exact details</b><small>A different active approver reviews the encrypted request.</small></div><div><span>03</span><b>Approved details reach Zoho Books</b><small>Only matching details are forwarded. The outcome is recorded.</small></div></div>
+      </section>
+      <section id="provider" class="provider"><div><div class="section-label">CONNECTED PROVIDER</div><h2 id="provider-name">Finance system</h2><p id="provider-description">Loading connection status.</p></div><a class="primary" href="/console/">Go to Orbit <span>→</span></a></section>
+    </main>
+    <footer class="site-footer"><a class="brand" href="/"><img src="assets/orbit-mascot.svg" alt=""><span>orbit<span class="brand-dot">.</span></span></a><span>Vendor bank changes stay held until the required checks pass.</span><a href="/docs">API documentation ↗</a></footer>
+  </body>
+</html>

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f6f4">
+    <title>Orbit · CR-26-047</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/review/styles.css">
+    <script defer src="/review/app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#overview" aria-label="Orbit home">
+          <img class="brand-image" src="/assets/orbit-mascot.svg" alt="">
+          <span>orbit<span class="brand-period">.</span></span>
+        </a>
+
+        <div class="workspace-label">WORKSPACE</div>
+        <div class="workspace-switcher">
+          <span class="workspace-avatar">HF</span>
+          <span class="workspace-name">Harbor &amp; Finch</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-link active" href="#overview" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>
+            <span>Case review</span><span class="nav-count">01</span>
+          </a>
+          <a class="nav-link" href="#timeline">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14M5 7h4M5 12h4M5 17h4M12 7h7M12 12h7M12 17h7"/></svg>
+            <span>Event timeline</span>
+          </a>
+          <a class="nav-link" href="#controls">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Approval controls</span>
+          </a>
+          <a class="nav-link" href="#evidence">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg>
+            <span>Evidence</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="side-case">
+            <span class="side-case-dot"></span>
+            <div><small>ACTIVE CASE</small><strong>CR-26-047</strong></div>
+            <span class="side-case-state">Review</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-avatar">A</span>
+            <span class="profile-copy"><strong>Analyst workspace</strong><small>Defense track · CRIMEATHON ’26</small></span>
+            <button class="icon-button more-button" aria-label="Workspace options" type="button"><svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg></button>
+          </div>
+        </div>
+      </aside>
+
+      <main id="overview" class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs"><span>Cases</span><span class="crumb-divider">/</span><strong>CR-26-047</strong></div>
+          <div class="topbar-right">
+            <span class="sync-state"><i></i><span id="sync-label">Connecting to case data</span></span>
+            <button class="avatar-small" type="button" aria-label="Analyst profile">A</button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <section class="case-heading">
+            <div class="eyebrow"><span class="eyebrow-line"></span> VENDOR CHANGE REVIEW <span class="eyebrow-sep">·</span> DEFENSE TRACK</div>
+            <div class="heading-row">
+              <div>
+                <div class="title-line"><h1>Verify before the next payment.</h1><span class="status-pill"><i></i> REVIEW REQUIRED</span></div>
+                <p class="page-subtitle">A bank-detail change reached the vendor record without a linked Finance approval.</p>
+              </div>
+              <button id="run-analysis" class="button button-secondary" type="button">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 8a6.7 6.7 0 0 0-11.9-2L3 8M3 4v4h4M3.5 12a6.7 6.7 0 0 0 11.9 2L17 12m0 4v-4h-4"/></svg>
+                Refresh review
+              </button>
+            </div>
+            <div class="case-meta">
+              <span><span class="meta-key">CASE</span> CR-26-047</span>
+              <span class="meta-divider"></span>
+              <span><span class="meta-key">VENDOR</span> Coastal Packaging Ltd</span>
+              <span class="meta-divider"></span>
+              <span><span class="meta-key">CHANGE</span> 03 Sep 2026 · 01:44 UTC</span>
+            </div>
+          </section>
+          <div id="error-note" class="error-note" role="alert">Evidence data could not be loaded. This page is showing the case summary; reconnect the Orbit server to refresh linked records.</div>
+
+          <section class="metric-grid" aria-label="Case summary">
+            <article class="metric-card">
+              <div class="metric-label">API changes reviewed <span class="metric-info" title="E18 · 1–7 September">i</span></div>
+              <div class="metric-value" id="metric-total">71</div>
+              <div class="metric-foot"><span class="metric-dot green"></span> E18 · 1–7 September</div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-label">Contact updates</div>
+              <div class="metric-value" id="metric-contacts">70</div>
+              <div class="metric-foot"><span class="metric-dot green"></span> Email and phone fields</div>
+            </article>
+            <article class="metric-card metric-alert">
+              <div class="metric-label">Bank-detail changes</div>
+              <div class="metric-value" id="metric-bank">1 <span class="value-suffix">needs review</span></div>
+              <div class="metric-foot"><span class="metric-dot orange"></span> No approval reference linked</div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-label">Evidence artifacts</div>
+              <div class="metric-value" id="metric-evidence">20</div>
+              <div class="metric-foot"><span class="metric-dot slate"></span> Case package · E01–E20</div>
+            </article>
+          </section>
+
+          <section class="alert-banner" aria-label="Recommended action">
+            <div class="alert-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg></div>
+            <div class="alert-copy"><strong>Hold the next payment until Finance verifies this change.</strong><span>The record has no approval reference. That is a control gap to resolve, not proof of fraud.</span></div>
+            <button id="open-review" class="button button-dark" type="button">Prepare Finance review <span aria-hidden="true">↗</span></button>
+          </section>
+
+          <div class="content-grid">
+            <div class="left-column">
+              <section class="panel change-panel" aria-labelledby="change-title">
+                <div class="panel-header">
+                  <div><div class="panel-kicker">SENSITIVE CHANGE <span class="source-tag">E18 + E19</span></div><h2 id="change-title">Vendor bank details updated</h2></div>
+                  <span class="severity-label"><i></i> HIGH IMPACT</span>
+                </div>
+                <div class="change-summary">
+                  <div class="vendor-identity">
+                    <span class="vendor-monogram">CP</span>
+                    <div><strong id="vendor-name">Coastal Packaging Ltd</strong><span>Vendor <b id="vendor-id">V-0412</b> · Harbor &amp; Finch Freight</span></div>
+                  </div>
+                  <span class="change-type"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h14M5 7V4h10v3M5 7v9h10V7M8 11h4"/></svg> Bank account</span>
+                </div>
+                <div class="account-change">
+                  <div><span class="field-label">PREVIOUS ACCOUNT</span><strong id="old-account">•••• 4417</strong></div>
+                  <svg class="account-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
+                  <div><span class="field-label">NEW ACCOUNT</span><strong id="new-account">•••• 9083</strong></div>
+                  <div class="approval-state"><span class="field-label">FINANCE APPROVAL</span><strong><span class="missing-icon">!</span> Reference missing</strong></div>
+                </div>
+                <div class="change-footer">
+                  <span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg><span id="change-time">03 Sep 2026 · 01:44 UTC</span></span>
+                  <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v10H3zM7 8h6m-6 3h4"/></svg> Request <b id="request-id">req-5f61b0de8</b></span>
+                  <button id="view-record" type="button" class="text-button">View source records <span aria-hidden="true">→</span></button>
+                </div>
+              </section>
+
+              <section id="timeline" class="panel timeline-panel" aria-labelledby="timeline-title">
+                <div class="panel-header timeline-heading">
+                  <div><div class="panel-kicker">REQUEST TRAIL <span class="source-tag">E18 · UTC</span></div><h2 id="timeline-title">What happened around the change</h2></div>
+                  <span class="timeline-date">03 Sep 2026</span>
+                </div>
+                <div id="timeline-list" class="timeline-list">
+                  <div class="timeline-row"><time>01:41:10</time><span class="timeline-node neutral"></span><div class="timeline-event"><strong>Vendor record read</strong><span>GET /v2/vendors/V-0412 · 1 record returned</span></div><span class="event-code">200 OK</span></div>
+                  <div class="timeline-row"><time>01:41:50</time><span class="timeline-node neutral"></span><div class="timeline-event"><strong>Existing bank details read</strong><span>GET /v2/vendors/V-0412/bank-details</span></div><span class="event-code">200 OK</span></div>
+                  <div class="timeline-row"><time>01:42:45</time><span class="timeline-node neutral"></span><div class="timeline-event"><strong>Scheduled payments queried</strong><span>GET /v2/payments/scheduled · 14 records returned</span></div><span class="event-code">200 OK</span></div>
+                  <div class="timeline-row timeline-row-critical"><time>01:44:30</time><span class="timeline-node critical"></span><div class="timeline-event"><strong>Bank details changed</strong><span>PATCH /v2/vendors/V-0412/bank-details · approval reference blank</span></div><span class="event-code event-code-critical">REVIEW</span></div>
+                </div>
+                <div class="timeline-followup"><span class="followup-line"></span><div><strong>06 Sep · 01:36 UTC</strong><span>Same key and source queried scheduled payments again · 15 records returned <a href="#evidence">E18</a></span></div></div>
+                <div class="timeline-footnote"><span class="footnote-icon">i</span> The request sequence is recorded in E18. It raises a payment-diversion concern, but the case package contains no later payment record showing where funds went.</div>
+              </section>
+            </div>
+
+            <aside class="right-column">
+              <section id="controls" class="panel control-panel" aria-labelledby="controls-title">
+                <div class="panel-kicker">REQUEST GATE · HISTORICAL REVIEW <span class="source-tag">E04 · E16 · E19</span></div>
+                <h2 id="controls-title">No verifiable Finance approval is linked.</h2>
+                <div class="control-list">
+                  <div class="control-item"><span class="control-symbol warn">!</span><div><strong>Credential needs restriction</strong><span><code>key-tb-07</code> is active, broad, and has no IP restriction or expiry.</span></div></div>
+                  <div class="control-item"><span class="control-symbol warn">!</span><div><strong>Permission is broader than this change</strong><span>The key has all-module access; the request writes bank details for this vendor.</span></div></div>
+                  <div class="control-item"><span class="control-symbol fail">×</span><div><strong>Finance approval not linked</strong><span>The matching vendor-change row has a blank reference.</span></div></div>
+                  <div class="control-item"><span class="control-symbol warn">!</span><div><strong>Request context needs review</strong><span>Client version 3.5.0 differs from the contact-only 3.6.0 release described in E20.</span></div></div>
+                </div>
+                <div class="control-foot"><span class="lock-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="8" width="12" height="9" rx="2"/><path d="M7 8V6a3 3 0 0 1 6 0v2m-3 4v2"/></svg></span><span><strong>Recommended disposition</strong><small>Hold payment · Verify with Finance</small></span></div>
+                <button id="open-review-side" type="button" class="button button-primary full-button">Prepare review brief <span aria-hidden="true">→</span></button>
+                <p class="prototype-note">This prototype recommends a hold. It does not change a payment or vendor record.</p>
+              </section>
+
+              <section class="panel integration-panel" aria-labelledby="integration-title">
+                <div class="panel-kicker">REQUEST CONTEXT <span class="source-tag">E18</span></div>
+                <h2 id="integration-title">Integration details</h2>
+                <dl class="detail-list">
+                  <div><dt>API credential</dt><dd><code>key-tb-07</code><span class="detail-badge">Broad scope</span></dd></div>
+                  <div><dt>Client version</dt><dd><code>TallyBridge-Sync/3.5.0</code><span class="detail-sub">E18 request header</span></dd></div>
+                  <div><dt>Source host</dt><dd><code>10.20.4.77</code><span class="detail-sub">Associated with build host in E15</span></dd></div>
+                  <div><dt>Approval reference</dt><dd><span class="missing-text">Not recorded</span><span class="detail-sub">Matching E19 change row</span></dd></div>
+                </dl>
+                <div class="context-note"><strong>Worth checking</strong><span>The request identifies as version 3.5.0. E20 describes a contact-only 3.6.0 release on 1 Sep. This mismatch is a lead to investigate, not proof of compromise.</span></div>
+              </section>
+            </aside>
+          </div>
+
+          <section id="evidence" class="evidence-strip">
+            <div class="evidence-heading"><div><div class="panel-kicker">EVIDENCE BASIS</div><h2>One change. Two records. One clear next step.</h2></div><button id="view-evidence" class="text-button" type="button">Open linked records <span aria-hidden="true">→</span></button></div>
+            <div class="evidence-cards">
+              <article><span class="evidence-id">E18</span><strong>LedgerOne API access</strong><span>Request ID, key, host, endpoint, method and response.</span></article>
+              <article><span class="evidence-id">E19</span><strong>Vendor master change</strong><span>Old/new account, vendor, channel and approval reference.</span></article>
+              <article><span class="evidence-id">E04 / E16 / E20</span><strong>Integration context</strong><span>Credential scope, sync purpose and release information.</span></article>
+            </div>
+          <div class="bottom-disclaimer"><span>CASE CR-26-047</span><span>The records confirm the change; they do not show whether funds moved.</span><span id="run-stamp">Review ready</span></div>
+          </section>
+          <footer class="page-footer"><span>Orbit <span class="brand-period">·</span> CRIMEATHON ’26</span><span>Evidence-led review workspace</span></footer>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="review-dialog" class="review-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-top"><span class="dialog-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg></span><button class="icon-button dialog-close" type="button" aria-label="Close review brief">×</button></div>
+      <div class="dialog-kicker">FINANCE HANDOFF · DRAFT</div>
+      <h2 id="dialog-title">Verify before payment.</h2>
+      <p class="dialog-description">Use this brief to check the approval and payment instructions for the vendor change.</p>
+      <div class="brief-box" id="brief-content"></div>
+      <div class="dialog-actions"><button id="copy-brief" class="button button-primary" type="button">Copy review brief</button><button id="close-dialog" class="button button-secondary" type="button">Done</button></div>
+      <p class="dialog-footnote">Draft only · No payment, approval, or vendor record is modified.</p>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
