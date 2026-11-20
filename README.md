@@ -2,6 +2,10 @@
 
 Orbit has a request-time gate for vendor bank-detail changes. The gate authenticates the calling service or Finance user, checks vendor-specific scope and current employee status, and holds the request for independent Finance approval of the exact submitted details. It forwards only through a configured provider write path; QBO sandbox bank changes require a manual UI save and an audited Finance confirmation because the Vendor API did not persist the Bill Pay ACH fields in controlled sandbox checks.
 
+**Live Netlify UI preview:** [Orbit landing page](https://orbit-vendor-protection.netlify.app/) · [Console](https://orbit-vendor-protection.netlify.app/console/)
+
+The public Netlify deployment currently serves static files only; it does not host the FastAPI backend or SQLite database. Live status checks, attack drills, and Finance approval requests require the backend and are unavailable from this preview. Do not submit bank changes through the public preview.
+
 The repository also contains the historical CR-26-047 evidence review and request-scoring console. The scoring/simulation routes are analysis tools; they do not enforce writes. Enforcement occurs only when callers send changes to `POST /api/gate/vendor-changes` and every write path to the finance system is restricted to Orbit. The local workspace has been used with an Intuit QuickBooks Online sandbox; production books are not connected.
 
 ## Architecture
