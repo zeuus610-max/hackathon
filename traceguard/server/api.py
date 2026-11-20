@@ -430,6 +430,19 @@ def gate_requests(request: Request, limit: int = Query(100, ge=1, le=500)):
     return gate.list_requests(request, limit)
 
 
+@router.get("/simulation/requests")
+def simulated_gate_requests(request: Request):
+    rows = store_of(request).query(
+        "SELECT gate_request_id, request_id, vendor_id, requester, status, bank_details_json, "
+        "upstream_status, upstream_reference, created_utc "
+        "FROM simulated_gate_requests ORDER BY created_utc DESC, gate_request_id")
+    for row in rows:
+        row["bank_details"] = json.loads(row.pop("bank_details_json"))
+        row["account_last4"] = row["bank_details"]["account_number"][-4:]
+        row["simulated"] = True
+    return {"requests": rows}
+
+
 @router.get("/gate/requests/{gate_request_id}")
 def gate_request_details(gate_request_id: str, request: Request):
     return gate.get_request(gate_request_id, request)

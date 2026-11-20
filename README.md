@@ -7,7 +7,7 @@ The repository also contains the historical CR-26-047 evidence review and reques
 ## Architecture
 
 - `traceguard/server/` — FastAPI request gate, evidence ingestion, UTC/clock handling, detections, and persistence.
-- `traceguard/frontend/` — React, Vite, Tailwind CSS, Recharts, Framer Motion, and Lucide-based five-section console.
+- `traceguard/frontend/` — React, Vite, Tailwind CSS, Recharts, Framer Motion, and Lucide-based Orbit console for Overview, Finance approvals, and the Security Wall.
 - `traceguard/web/` — static Orbit presentation and read-only historical review; Vite production output is built to `web/console/`.
 - `evidence/` — source case records. Original timestamps and missing telemetry remain visible in the evidence model.
 - `traceguard/supabase/schema.sql` — optional Supabase persistence schema.
@@ -36,7 +36,9 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` for the five-section defense console. Vite proxies `/api` to the backend at `http://127.0.0.1:8000`.
+Open `http://localhost:5173` for the Orbit console. Vite proxies `/api` to the backend at `http://127.0.0.1:8000`.
+
+The Security Wall shows a live posture score from the request-gate configuration, approval policy, audit-chain verification, provider result, browser response headers, and local deployment boundary. Its attack drill calls the analysis-only request scoring route; it never forwards a bank change to the finance provider. The score is a transparent configuration check, not a penetration-test result or security certification.
 
 The existing Orbit overview is at `http://localhost:8000/`; the read-only case review is at `http://localhost:8000/review/`.
 

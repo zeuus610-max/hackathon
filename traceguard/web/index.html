@@ -3,117 +3,50 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#000000">
-    <meta name="description" content="Orbit holds risky vendor bank changes until identity, permission, approval, and risk checks pass.">
-    <title>Orbit — Stop risky vendor changes before payment</title>
+    <meta name="theme-color" content="#080b11">
+    <meta name="description" content="Orbit prevents unauthorized vendor bank changes with identity checks and independent Finance approval before any write reaches your finance system.">
+    <title>Orbit — Vendor payment protection</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="landing.css">
     <script defer src="landing.js"></script>
   </head>
   <body>
-    <div class="hero-photo" aria-hidden="true">
-      <video class="hero-video" src="assets/orbit-wave.mp4" autoplay loop muted playsinline preload="auto" tabindex="-1">
-        <source src="assets/orbit-wave.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="grain" aria-hidden="true"></div>
-    <header class="topbar">
-      <a class="brand" href="#slide-1" aria-label="Orbit home">
-        <img class="brand-mark" src="assets/orbit-mascot.svg" alt="">
-        <span>orbit<span class="brand-period">.</span></span>
-      </a>
-      <nav class="deck-nav" aria-label="Presentation slides">
-        <button class="nav-item is-active" data-go="0" type="button"><span>01</span>Overview</button>
-        <button class="nav-item" data-go="1" type="button"><span>02</span>Four checks</button>
-        <button class="nav-item" data-go="2" type="button"><span>03</span>Live gate</button>
-        <button class="nav-item" data-go="3" type="button"><span>04</span>Response</button>
-      </nav>
-      <a class="primary-button header-cta" href="/console/">Open defense console <span aria-hidden="true">↗</span></a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Orbit home"><img src="assets/orbit-mascot.svg" alt=""><span>orbit<span class="brand-dot">.</span></span></a>
+      <nav aria-label="Main navigation"><a href="#protection">Protection</a><a href="#workflow">How it works</a><a href="#provider">Provider</a></nav>
+      <a class="header-cta" href="/console/">Open Orbit <span aria-hidden="true">↗</span></a>
     </header>
-
-    <main class="deck" aria-live="polite">
-      <section class="slide slide-hero is-current" id="slide-1" aria-labelledby="hero-title">
+    <main>
+      <section class="hero">
+        <video class="hero-background-video" autoplay muted loop playsinline preload="metadata" disablepictureinpicture tabindex="-1" aria-hidden="true">
+          <source src="assets/orbit-hero.mp4" type="video/mp4">
+        </video>
         <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-star" aria-hidden="true">✦</span> Request-time control for Finance</div>
-          <h1 id="hero-title">Hold <em>vendor changes</em><br>before payment.</h1>
-          <p>Orbit checks identity, vendor permission, exact Finance approval, and request context before a sensitive bank change can take effect.</p>
-          <button class="primary-button" data-go="2" type="button">See the request gate <span aria-hidden="true">↗</span></button>
-        </div>
-        <div class="proof-points" aria-label="Orbit controls"><span><b>04</b> checks before commit</span><span><b>HOLD</b> changes that fail</span><span><b>0</b> live writes</span></div>
-        <div class="hero-scene" aria-label="Orbit holding an unverified vendor bank change">
-          <div class="scene-orbit orbit-a"></div><div class="scene-orbit orbit-b"></div><div class="scene-orbit orbit-c"></div>
-          <div class="scene-beacon"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="14"/><ellipse cx="20" cy="20" rx="19" ry="8" transform="rotate(-34 20 20)"/><circle cx="20" cy="20" r="3"/><circle cx="34" cy="11" r="2"/></svg></div>
-          <div class="scene-line line-one"></div><div class="scene-line line-two"></div>
-          <article class="request-card">
-            <div class="request-top"><div><span class="micro-label">INTERCEPTED REQUEST</span><strong>Vendor bank details</strong></div><span class="hold-pill"><i></i> HELD</span></div>
-            <div class="vendor-block"><span class="vendor-monogram">CP</span><div><strong>Coastal Packaging Ltd</strong><small>Vendor V-0412 · TallyBridge</small></div><span class="arrow-mark">↗</span></div>
-            <div class="account-compare"><div><span>EXISTING ACCOUNT</span><b>•••• 4417</b></div><i>→</i><div><span>REQUESTED ACCOUNT</span><b>•••• 9083</b></div></div>
-            <div class="request-alert"><span>!</span><div><b>Finance approval missing</b><small>Change stays unapplied until reviewed</small></div></div>
-            <div class="request-footer"><span>ORBIT GATE</span><b>Hold · Alert · Preserve</b></div>
-          </article>
-          <div class="scene-caption"><i></i> THE CHANGE STOPS HERE</div>
+          <div class="eyebrow"><i></i> REQUEST-TIME PAYMENT PROTECTION</div>
+          <h1>Stop unauthorized vendor bank changes <em>before payment.</em></h1>
+          <p>Orbit puts an approval gate in the finance write path. Every bank change is checked against the caller, vendor scope, and exact Finance approval before it reaches your books.</p>
+          <div class="hero-actions"><a class="primary" href="/console/">Open protection console <span>→</span></a><a class="quiet-link" href="#workflow">See the controls</a></div>
+          <div class="live-status"><i id="service-dot"></i><span id="service-state">Checking protection status…</span></div>
         </div>
       </section>
-
-      <section class="slide checks-slide" id="slide-2" aria-labelledby="checks-title" aria-hidden="true">
-        <div class="slide-heading"><div class="eyebrow"><span class="eyebrow-line"></span> FOUR CHECKS BEFORE COMMIT</div><h2 id="checks-title">A bank change earns its way through.</h2><p>Every check is tied to the request in front of Orbit. Missing or mismatched information means the write waits.</p></div>
-        <div class="check-layout">
-          <div class="check-stack">
-            <article class="check-card"><span class="check-index">01</span><span class="check-icon icon-identity"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20c.6-3.6 2.8-5.5 7-5.5s6.4 1.9 7 5.5"/><path d="m17 5 2 2 3-3"/></svg></span><div><h3>Identity &amp; credential</h3><p>Is the user or integration still active? Is the credential valid, restricted, and allowed for this use?</p></div><span class="check-state">ACTIVE · SCOPED</span></article>
-            <article class="check-card"><span class="check-index">02</span><span class="check-icon icon-permission"><svg viewBox="0 0 24 24"><path d="M12 3 3 7v5c0 4.7 3.5 7.6 9 9 5.5-1.4 9-4.3 9-9V7l-9-4Z"/><path d="M8 12h8"/></svg></span><div><h3>Permission for this vendor</h3><p>May this identity change this vendor’s bank field? Contact-sync access is not bank-edit access.</p></div><span class="check-state">VENDOR · FIELD</span></article>
-            <article class="check-card"><span class="check-index">03</span><span class="check-icon icon-approval"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/><path d="m14 16 2 2 4-5"/></svg></span><div><h3>Approval for these details</h3><p>Does Finance approval match this vendor and these exact new bank details?</p></div><span class="check-state">EXACT MATCH</span></article>
-            <article class="check-card"><span class="check-index">04</span><span class="check-icon icon-risk"><svg viewBox="0 0 24 24"><path d="M4 18V6m0 12h16M8 14l3-4 3 2 5-6"/><circle cx="19" cy="6" r="1.5"/></svg></span><div><h3>Risk context</h3><p>Unexpected source, client version, unusual exports, or related suspicious access?</p></div><span class="check-state">SOURCE · ACTIVITY</span></article>
-          </div>
-          <aside class="check-side"><div class="side-orbit"><svg viewBox="0 0 180 180" aria-hidden="true"><circle cx="90" cy="90" r="30"/><circle cx="90" cy="90" r="55"/><ellipse cx="90" cy="90" rx="78" ry="34" transform="rotate(-34 90 90)"/><circle cx="151" cy="50" r="6"/></svg><span>ONE REQUEST<br>FOUR DECISIONS</span></div><div class="side-rule"></div><p>Policy follows the action. A vendor bank update gets stronger checks than a routine contact edit.</p><div class="side-mini"><span>WHEN A CHECK FAILS</span><b>Hold the write. Route the review.</b></div></aside>
+      <section id="protection" class="protection">
+        <div class="section-label">BUILT AROUND THE CHANGE THAT CAN DIVERT A PAYMENT</div>
+        <h2>Each write has to earn its way through.</h2>
+        <div class="protection-grid">
+          <article><b>01</b><h3>Verify the caller</h3><p>Authenticate the service or Finance user. Check current status, role, and credential scope on every request.</p></article>
+          <article><b>02</b><h3>Restrict the vendor</h3><p>Authorize each identity for specific vendors and actions. Broad sync access cannot change bank details.</p></article>
+          <article><b>03</b><h3>Require a second person</h3><p>A separate Finance approver reviews the precise bank details submitted by the requester.</p></article>
+          <article><b>04</b><h3>Forward only the approved values</h3><p>Encrypt held details, compare the approval against the request, and write only after an exact match.</p></article>
         </div>
       </section>
-
-      <section class="slide gate-slide" id="slide-3" aria-labelledby="gate-title" aria-hidden="true">
-        <div class="slide-heading"><div class="eyebrow"><span class="eyebrow-line"></span> INTERACTIVE GATE SIMULATION</div><h2 id="gate-title">See what Orbit does with a risky request.</h2><p>This demonstration uses the case’s vendor change as an example. No real account or payment is changed.</p></div>
-        <div class="gate-layout">
-          <article class="gate-request panel">
-            <div class="panel-heading"><span>INCOMING API REQUEST</span><span class="request-id">REQ · TB-9081</span></div>
-            <div class="request-person"><span class="integration-icon">TB</span><div><strong>key-tb-07</strong><small>TallyBridge integration · POST /vendors/V-0412/bank</small></div></div>
-            <div class="payload"><span>vendor_id</span><b>V-0412</b><span>bank_account</span><b>•••• 9083</b><span>approval_ref</span><b class="missing-value">— missing —</b></div>
-            <button class="evaluate-button" id="evaluate-request" type="button">Evaluate request <span aria-hidden="true">→</span></button>
-            <div class="simulation-label"><i></i> SIMULATED · NO LIVE WRITE</div>
-          </article>
-          <div class="gate-connector" aria-hidden="true"><span></span><i>ORBIT</i><span></span></div>
-          <article class="gate-result panel" aria-live="polite">
-            <div class="panel-heading"><span>POLICY DECISION</span><span class="decision-chip" id="decision-chip">READY</span></div>
-            <div class="decision-main"><div class="decision-symbol" id="decision-symbol">···</div><div><h3 id="decision-title">Run the four checks</h3><p id="decision-copy">Orbit evaluates this specific identity, vendor, field, approval, and request context.</p></div></div>
-            <div class="decision-checks">
-              <div><span class="mini-check fail">!</span><span><b>Credential scope</b><small>Broad integration key</small></span><em>REVIEW</em></div>
-              <div><span class="mini-check pass">✓</span><span><b>Vendor permission</b><small>Bank field not in sync scope</small></span><em>DENY</em></div>
-              <div><span class="mini-check fail">!</span><span><b>Finance approval</b><small>No matching approval reference</small></span><em>MISSING</em></div>
-              <div><span class="mini-check warn">·</span><span><b>Risk context</b><small>Unusual export activity nearby</small></span><em>REVIEW</em></div>
-            </div>
-            <div class="decision-actions"><span id="decision-action-label">IF ANY CHECK FAILS</span><b id="decision-action">Hold · Alert · Preserve evidence</b></div>
-          </article>
-        </div>
-        <div class="gate-disclosure">The case shows these control gaps; this Orbit gate is a product simulation, not a deployed control.</div>
+      <section id="workflow" class="workflow">
+        <div><div class="section-label">ONE CONTROLLED PATH</div><h2>Hold. Verify. Apply.</h2><p>Unverified requests remain held or blocked. An approval cannot change the submitted values, and the requester cannot approve their own change.</p></div>
+        <div class="flow-list"><div><span>01</span><b>Request reaches Orbit</b><small>Caller identity, vendor, scope, and request context are checked.</small></div><div><span>02</span><b>Finance verifies exact details</b><small>A different active approver reviews the encrypted request.</small></div><div><span>03</span><b>Approved details reach Zoho Books</b><small>Only matching details are forwarded. The outcome is recorded.</small></div></div>
       </section>
-
-      <section class="slide response-slide" id="slide-4" aria-labelledby="response-title" aria-hidden="true">
-        <div class="slide-heading"><div class="eyebrow"><span class="eyebrow-line"></span> CONTAIN · REVIEW · RELEASE</div><h2 id="response-title">A failed check becomes a safe pause.</h2><p>Orbit gives the reviewer one clear action with the request and its supporting context kept together.</p></div>
-        <div class="response-flow">
-          <article class="response-step"><span class="response-number">01</span><div class="response-icon"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg></div><h3>Hold the change</h3><p>Do not commit new bank details while a required check is unresolved.</p><span class="response-tag">WRITE HELD</span></article>
-          <div class="response-arrow">→</div>
-          <article class="response-step"><span class="response-number">02</span><div class="response-icon"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/><path d="M12 3V1"/></svg></div><h3>Alert the right reviewer</h3><p>Route the request to Finance with the exact mismatch and a clear next step.</p><span class="response-tag">FINANCE REVIEW</span></article>
-          <div class="response-arrow">→</div>
-          <article class="response-step"><span class="response-number">03</span><div class="response-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h4"/><circle cx="17" cy="16" r="3"/></svg></div><h3>Preserve the evidence</h3><p>Keep the request, policy result, approval, and related activity linked for audit.</p><span class="response-tag">AUDIT TRAIL</span></article>
-        </div>
-        <div class="signal-band"><div class="signal-intro"><span>CONTEXT CAN HELP REVIEW</span><b>Signals inform the decision.<br>They don’t accuse a person.</b></div><div class="signal"><i class="signal-tally">T</i><div><b>TallyBridge</b><small>Unusual exports · bank-change request</small></div></div><div class="signal"><i class="signal-vault">B</i><div><b>BlueVault</b><small>Finance-file reads · clock uncertain</small></div></div><div class="signal"><i class="signal-user">U</i><div><b>User access</b><small>Post-offboarding sign-in · user unknown</small></div></div></div>
-        <div class="last-line"><span><i></i> VERIFY THE CHANGE BEFORE THE PAYMENT RUN</span><button class="primary-button" data-go="0" type="button">Back to Orbit <span aria-hidden="true">↗</span></button></div>
-      </section>
+      <section id="provider" class="provider"><div><div class="section-label">CONNECTED PROVIDER</div><h2 id="provider-name">Finance system</h2><p id="provider-description">Loading connection status.</p></div><a class="primary" href="/console/">Go to Orbit <span>→</span></a></section>
     </main>
-
-    <footer class="deck-controls">
-      <div class="slide-count"><span id="slide-current">01</span><i></i>04</div>
-      <div class="progress-track"><span id="progress-fill"></span></div>
-      <div class="control-actions"><span class="key-hint">USE ← →</span><button id="prev-slide" type="button" aria-label="Previous slide">←</button><button id="next-slide" type="button" aria-label="Next slide">→</button></div>
-    </footer>
+    <footer class="site-footer"><a class="brand" href="/"><img src="assets/orbit-mascot.svg" alt=""><span>orbit<span class="brand-dot">.</span></span></a><span>Vendor bank changes stay held until the required checks pass.</span><a href="/docs">API documentation ↗</a></footer>
   </body>
 </html>

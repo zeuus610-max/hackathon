@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -84,6 +85,12 @@ async def security_headers(request, call_next):
 @app.get("/healthz")
 def healthz():
     return {"status": "ok", **getattr(app.state, "boot", {})}
+
+
+@app.get("/review")
+@app.get("/review/{path:path}")
+def retire_case_review(path: str = ""):
+    return RedirectResponse(url="/console/", status_code=307)
 
 
 if CONSOLE_BUILD_DIR.is_dir():

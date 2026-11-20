@@ -2,7 +2,7 @@ import hashlib
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -179,6 +179,18 @@ CREATE TABLE IF NOT EXISTS gate_approvals (
   FOREIGN KEY (gate_request_id) REFERENCES gate_requests(gate_request_id)
 );
 
+CREATE TABLE IF NOT EXISTS simulated_gate_requests (
+  gate_request_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  vendor_id TEXT NOT NULL,
+  requester TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('HELD', 'APPROVED_PENDING_PROVIDER', 'APPLIED')),
+  bank_details_json TEXT NOT NULL,
+  upstream_status INTEGER,
+  upstream_reference TEXT,
+  created_utc TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   seq          INTEGER PRIMARY KEY,
   ts_utc       TEXT NOT NULL,
@@ -219,7 +231,37 @@ class Store:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
+        self._seed_simulated_gate_requests()
         self.conn.commit()
+
+    def _seed_simulated_gate_requests(self):
+        now = datetime.now(timezone.utc)
+        scenarios = [
+            ("sim-held-001", "SIM-2026-001", "V-0412", "Ops maker 01", "HELD", "1284", None, None),
+            ("sim-held-002", "SIM-2026-002", "V-0537", "Ops maker 02", "HELD", "6731", None, None),
+            ("sim-held-003", "SIM-2026-003", "V-0861", "Ops maker 03", "HELD", "4409", None, None),
+            ("sim-followup-001", "SIM-2026-004", "V-0228", "Ops maker 04", "APPROVED_PENDING_PROVIDER", "9012", None, None),
+            ("sim-followup-002", "SIM-2026-005", "V-0992", "Ops maker 05", "APPROVED_PENDING_PROVIDER", "3375", None, None),
+            ("sim-applied-001", "SIM-2026-006", "V-0118", "Ops maker 06", "APPLIED", "5820", 200, "SIM-ZOHO-2048"),
+        ]
+        for offset, (gate_id, request_id, vendor_id, requester, status, suffix,
+                     upstream_status, upstream_reference) in enumerate(scenarios):
+            bank_details = {
+                "bank_name": "Example Finance Bank",
+                "account_holder": f"Orbit Simulation Vendor {offset + 1}",
+                "account_number": f"00000000{suffix}",
+                "routing_code": "000000000",
+                "country": "IN",
+            }
+            created = (now - timedelta(minutes=offset)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            self.conn.execute(
+                "INSERT OR IGNORE INTO simulated_gate_requests "
+                "(gate_request_id, request_id, vendor_id, requester, status, bank_details_json, "
+                "upstream_status, upstream_reference, created_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (gate_id, request_id, vendor_id, requester, status,
+                 json.dumps(bank_details, sort_keys=True), upstream_status,
+                 upstream_reference, created),
+            )
 
     def query(self, sql, params=()):
         with self.lock:

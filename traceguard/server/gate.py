@@ -24,6 +24,7 @@ from fastapi import HTTPException, Request
 from .schemas import (BankDetails, QBOUIConfirmation, VendorBankChangeApproval,
                       VendorBankChangeRequest)
 from .store import Store, utcnow
+from . import zoho_books
 
 
 @dataclass(frozen=True)
@@ -170,7 +171,17 @@ def gate_status() -> dict:
         configured = True
     except HTTPException:
         configured = False
-    if os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() == "qbo":
+    provider = os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower()
+    if provider == "zoho_books_india":
+        configured_upstream = all(os.getenv(key) for key in (
+            "ORBIT_ZOHO_ORGANIZATION_ID", "ORBIT_ZOHO_ACCESS_TOKEN", "ORBIT_ZOHO_VENDOR_ID_MAP_JSON"))
+        return {"configured": configured, "can_hold": configured,
+                "can_forward": configured and configured_upstream,
+                "upstream_configured": configured_upstream,
+                "provider": "zoho_books_india",
+                "write_mode": "api_after_exact_finance_approval",
+                "enforcement": "deny unless active identity, vendor scope, and exact Finance approval pass"}
+    if provider == "qbo":
         qbo_oauth_configured = all(os.getenv(key) for key in (
             "ORBIT_QBO_REALM_ID", "ORBIT_QBO_CLIENT_ID", "ORBIT_QBO_CLIENT_SECRET",
             "ORBIT_QBO_REFRESH_TOKEN"))
@@ -293,7 +304,12 @@ def get_request(gate_request_id: str, request: Request) -> dict:
                 {"vendor_id": row["vendor_id"], "bank_fingerprint": row["bank_fingerprint"]})
     approvals = store.query("SELECT approver, created_utc FROM gate_approvals WHERE gate_request_id = ? ORDER BY created_utc",
                            (gate_request_id,))
-    return {**_public(row, include_bank_details=True), "approvals": approvals}
+    sandbox_reopen = store.one(
+        "SELECT ts_utc FROM audit_log WHERE target = ? "
+        "AND action = 'vendor_bank_change.reopened_for_sandbox_review' "
+        "ORDER BY seq DESC LIMIT 1", (gate_request_id,))
+    return {**_public(row, include_bank_details=True), "approvals": approvals,
+            "sandbox_reopened_utc": sandbox_reopen["ts_utc"] if sandbox_reopen else None}
 
 
 async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval,
@@ -321,7 +337,8 @@ async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval
 
     approval_id = str(uuid.uuid4())
     now = utcnow()
-    qbo_provider = os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower() == "qbo"
+    provider = os.getenv("ORBIT_FINANCE_PROVIDER", "generic").lower()
+    qbo_provider = provider == "qbo"
     approved_status = "MANUAL_ACTION_REQUIRED" if qbo_provider else "APPROVED_PENDING_PROVIDER"
     with store.lock:
         latest = store.conn.execute("SELECT status FROM gate_requests WHERE gate_request_id = ?",
@@ -346,6 +363,26 @@ async def approve_change(gate_request_id: str, payload: VendorBankChangeApproval
 
     if qbo_provider:
         return await _approve_qbo_change(store, approver, row, gate_request_id)
+
+    if provider == "zoho_books_india":
+        bank_details = _unsecret(row["bank_details_ciphertext"])
+        try:
+            result = await zoho_books.apply_vendor_bank_details(
+                vendor_id=row["vendor_id"], bank_details=bank_details)
+        except zoho_books.ZohoBooksError as exc:
+            store.audit(approver.principal, "vendor_bank_change.zoho_forward_error", gate_request_id,
+                        {"vendor_id": row["vendor_id"], "error": str(exc)})
+            store.write("UPDATE gate_requests SET upstream_status = 'ERROR', updated_utc = ? WHERE gate_request_id = ?",
+                        (utcnow(), gate_request_id))
+            return {"gate_request_id": gate_request_id, "status": "APPROVED_PENDING_PROVIDER",
+                    "detail": "Zoho Books did not confirm the vendor bank account. No success is reported."}
+        store.write("UPDATE gate_requests SET status = 'APPLIED', upstream_status = ?, upstream_reference = ?, updated_utc = ? WHERE gate_request_id = ?",
+                    (result["status_code"], result["reference"][:120], utcnow(), gate_request_id))
+        store.audit(approver.principal, "vendor_bank_change.zoho_applied", gate_request_id,
+                    {"vendor_id": row["vendor_id"], "upstream_status": result["status_code"],
+                     "upstream_reference": result["reference"], "bank_fingerprint": row["bank_fingerprint"]})
+        return {"gate_request_id": gate_request_id, "status": "APPLIED",
+                "upstream_status": result["status_code"], "upstream_reference": result["reference"]}
 
     try:
         provider_url = _provider_url(row["vendor_id"])

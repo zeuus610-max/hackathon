@@ -1,66 +1,36 @@
 (() => {
-  const slides = [...document.querySelectorAll(".slide")];
-  const navItems = [...document.querySelectorAll(".nav-item")];
-  const currentLabel = document.querySelector("#slide-current");
-  const progress = document.querySelector("#progress-fill");
-  const previous = document.querySelector("#prev-slide");
-  const next = document.querySelector("#next-slide");
-  let current = 0;
+  const dot = document.querySelector("#service-dot");
+  const state = document.querySelector("#service-state");
+  const gate = document.querySelector("#gate-state");
+  const provider = document.querySelector("#provider-name");
+  const description = document.querySelector("#provider-description");
 
-  function showSlide(index) {
-    current = (index + slides.length) % slides.length;
-    slides.forEach((slide, i) => {
-      const active = i === current;
-      slide.classList.toggle("is-current", active);
-      slide.setAttribute("aria-hidden", String(!active));
+  fetch("/api/health", { cache: "no-store" })
+    .then(response => {
+      if (!response.ok) throw new Error("service unavailable");
+      return response.json();
+    })
+    .then(health => {
+      const status = health.request_gate || {};
+      dot.classList.toggle("online", health.status === "ok");
+      state.textContent = health.status === "ok" ? "Orbit service online" : "Orbit service needs attention";
+      if (gate) gate.textContent = status.can_forward ? "ACTIVE" : status.configured ? "HOLDING" : "OFFLINE";
+      provider.textContent = status.provider === "zoho_books_india" ? "Zoho Books India" : status.provider || "Finance provider";
+      description.textContent = status.can_forward
+        ? "Vendor bank updates pass through Orbit after caller authorization, vendor-scope checks, and independent approval of the exact details."
+        : "The write path stays closed until provider and gate settings are complete.";
+    })
+    .catch(() => {
+      if (location.protocol === "file:") {
+        state.textContent = "Open over HTTP for live status";
+        if (gate) gate.textContent = "SERVER REQUIRED";
+        provider.textContent = "Zoho Books India";
+        description.textContent = "This file preview cannot reach Orbit’s API. Open http://127.0.0.1:8000/ to view live protection status.";
+        return;
+      }
+      state.textContent = "Orbit service unavailable";
+      if (gate) gate.textContent = "OFFLINE";
+      provider.textContent = "Finance provider";
+      description.textContent = "Start the Orbit service to restore live protection status.";
     });
-    navItems.forEach((item, i) => {
-      const active = i === current;
-      item.classList.toggle("is-active", active);
-      item.setAttribute("aria-current", active ? "step" : "false");
-    });
-    currentLabel.textContent = String(current + 1).padStart(2, "0");
-    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
-    history.replaceState(null, "", `#slide-${current + 1}`);
-  }
-
-  navItems.forEach((item) => item.addEventListener("click", () => showSlide(Number(item.dataset.go))));
-  document.querySelectorAll("[data-go]").forEach((button) => {
-    if (!button.classList.contains("nav-item")) {
-      button.addEventListener("click", () => showSlide(Number(button.dataset.go)));
-    }
-  });
-  previous.addEventListener("click", () => showSlide(current - 1));
-  next.addEventListener("click", () => showSlide(current + 1));
-  document.addEventListener("keydown", (event) => {
-    if (["ArrowRight", "PageDown", " "].includes(event.key)) {
-      event.preventDefault();
-      showSlide(current + 1);
-    } else if (["ArrowLeft", "PageUp"].includes(event.key)) {
-      event.preventDefault();
-      showSlide(current - 1);
-    } else if (event.key === "Home") {
-      showSlide(0);
-    } else if (event.key === "End") {
-      showSlide(slides.length - 1);
-    }
-  });
-
-  const initial = Number(location.hash.match(/slide-(\d)/)?.[1]);
-  showSlide(Number.isInteger(initial) && initial > 0 ? initial - 1 : 0);
-
-  const evaluate = document.querySelector("#evaluate-request");
-  const result = document.querySelector(".gate-result");
-  evaluate.addEventListener("click", () => {
-    result.classList.add("is-blocked");
-    document.querySelector("#decision-chip").textContent = "HOLD";
-    document.querySelector("#decision-symbol").textContent = "!";
-    document.querySelector("#decision-title").textContent = "Change held for Finance";
-    document.querySelector("#decision-copy").textContent = "The bank update is stopped before commit because permission and matching approval checks fail.";
-    document.querySelector("#decision-action-label").textContent = "REQUEST-TIME DECISION";
-    document.querySelector("#decision-action").textContent = "Hold write · Alert Finance · Preserve evidence";
-    evaluate.innerHTML = "Request held safely <span aria-hidden=\"true\">✓</span>";
-    evaluate.disabled = true;
-    evaluate.setAttribute("aria-label", "Simulation complete. The request is held.");
-  });
 })();
